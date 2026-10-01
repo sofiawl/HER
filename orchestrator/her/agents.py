@@ -75,6 +75,36 @@ def final_result(log_path):
     return texts[-1] if texts else ""
 
 
+def result_info(log_path):
+    info = {
+        "subtype": None,
+        "is_error": False,
+        "permission_denials": [],
+        "usage": None,
+        "cost": None,
+        "models": [],
+        "blocked": False,
+    }
+    for event in _events(log_path):
+        if event.get("type") != "result":
+            continue
+        info["subtype"] = event.get("subtype")
+        info["is_error"] = bool(event.get("is_error"))
+        info["permission_denials"] = [
+            d.get("tool_name", "?") if isinstance(d, dict) else str(d)
+            for d in event.get("permission_denials") or []
+        ]
+        info["usage"] = event.get("usage") if isinstance(event.get("usage"), dict) else None
+        cost = event.get("total_cost_usd")
+        info["cost"] = float(cost) if isinstance(cost, (int, float)) else None
+        usage_by_model = event.get("modelUsage")
+        info["models"] = list(usage_by_model) if isinstance(usage_by_model, dict) else []
+    info["blocked"] = any(
+        line.startswith("BLOCKED") for line in final_result(log_path).splitlines()
+    )
+    return info
+
+
 def pretty_lines(log_path):
     for event in _events(log_path):
         kind = event.get("type")

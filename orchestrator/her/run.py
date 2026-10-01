@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .agents import build_command, final_result, run_logged
+from .agents import build_command, final_result, result_info, run_logged
 from .config import RUNS_DIR
 
 DONE, FAILED, RUNNING, PENDING, SKIPPED = "done", "failed", "running", "pending", "skipped"
@@ -107,6 +107,26 @@ def step_prompt(run, plan, step):
     return "\n".join(lines)
 
 
+def step_verdict(code, result, info):
+    if code != 0:
+        return FAILED, f"exit code {code}"
+    if not result.strip():
+        return FAILED, "empty result"
+    if info["subtype"] not in (None, "success"):
+        return FAILED, f"subtype {info['subtype']}"
+    if info["is_error"]:
+        return FAILED, "is_error"
+    denials = info["permission_denials"]
+    if denials:
+        counts = {}
+        for name in denials:
+            counts[name] = counts.get(name, 0) + 1
+        return FAILED, "denied: " + ", ".join(f"{n} x{c}" for n, c in counts.items())
+    if info["blocked"]:
+        return FAILED, "blocked"
+    return DONE, None
+
+
 class Executor:
     def __init__(self, config, run, out=print):
         self.config = config
@@ -168,12 +188,13 @@ class Executor:
         code = process.wait()
         result = final_result(log_path)
         self.run.step_output(sid).write_text(result)
-        status = DONE if code == 0 and result.strip() else FAILED
+        status, reason = step_verdict(code, result, result_info(log_path))
         elapsed = int(time.time() - self.started[sid])
         with self.lock:
             self.status[sid] = status
-        self._record(sid, status=status, exit_code=code, seconds=elapsed)
-        self._say(f"{status:<6} {sid} in {elapsed}s -> {self.run.step_output(sid)}")
+        self._record(sid, status=status, exit_code=code, seconds=elapsed, reason=reason)
+        why = f" ({reason})" if reason else ""
+        self._say(f"{status:<6} {sid} in {elapsed}s{why} -> {self.run.step_output(sid)}")
 
     def _status_line(self):
         counts = {}
@@ -208,7 +229,7 @@ class Executor:
                     with self.lock:
                         self.status[sid] = RUNNING
                     self.started[sid] = time.time()
-                    self._record(sid, status=RUNNING, started_at=self.started[sid], seconds=None, exit_code=None)
+                    self._record(sid, status=RUNNING, started_at=self.started[sid], seconds=None, exit_code=None, reason=None)
                     skill = f" /her:{step['skill']}" if step.get("skill") else ""
                     mode = "writes" if step["writes"] else "reads"
                     self._say(f"start  {sid}{skill} on {step['agent']}/{step['model']} ({mode}) in {step['cwd']}")
