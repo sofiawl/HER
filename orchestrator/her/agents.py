@@ -1,5 +1,6 @@
 import json
 import subprocess
+from pathlib import Path
 
 QUESTION_PREFIX = "QUESTION:"
 
@@ -32,6 +33,15 @@ def build_command(config, agent, prompt, model, cwd, add_dirs, writes, resume=No
     if agent == "cursor":
         return cursor_command(config, prompt, model, add_dirs, writes, cwd)
     raise ValueError(f"unknown agent: {agent}")
+
+
+def git(cwd, *args):
+    return subprocess.run(["git", "-C", str(cwd), *args], capture_output=True, text=True)
+
+
+def git_root(cwd):
+    found = git(cwd, "rev-parse", "--show-toplevel")
+    return Path(found.stdout.strip()).resolve() if found.returncode == 0 else None
 
 
 def run_logged(command, cwd, log_path, append=False):

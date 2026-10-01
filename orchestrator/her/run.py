@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .agents import build_command, final_result, result_info, run_logged
+from .agents import build_command, final_result, git, git_root, result_info, run_logged
 from .config import RUNS_DIR
 
 DONE, FAILED, RUNNING, PENDING, SKIPPED, BLOCKED = "done", "failed", "running", "pending", "skipped", "blocked"
@@ -193,6 +193,15 @@ def fast_failure(status, seconds, info):
     return errored and not info["tool_uses"]
 
 
+def checkout(cwd, branch, base):
+    exists = git(cwd, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
+    done = git(cwd, "checkout", branch) if exists else git(cwd, "checkout", "-b", branch, base)
+    if done.returncode == 0:
+        return None
+    lines = (done.stderr or done.stdout).strip().splitlines()
+    return f"git checkout {branch} failed: {lines[-1] if lines else done.returncode}"
+
+
 class Executor:
     def __init__(self, config, run, out=print):
         self.config = config
@@ -209,6 +218,30 @@ class Executor:
         self.steps = {s["id"]: s for s in self.plan["steps"]}
         self.started = {}
         self.processes = {}
+        self.prepared = set()
+
+    def _prepare_repo(self, step):
+        root = git_root(step["cwd"])
+        if root is None:
+            return None
+        with self.lock:
+            saved = self.run.state().get("steps", {})
+            ran = any(
+                saved.get(s["id"], {}).get("attempts") and git_root(s["cwd"]) == root
+                for s in self.plan["steps"] if s["writes"]
+            )
+            first = root not in self.prepared and not ran
+            self.prepared.add(root)
+        if first and git(root, "status", "--porcelain").stdout.strip():
+            return "dirty tree"
+        if not step.get("branch"):
+            return None
+        base = next(
+            (r.get("base") for r in self.plan.get("repos", [])
+             if Path(r["path"]).expanduser().resolve() == root),
+            None,
+        )
+        return checkout(step["cwd"], step["branch"], base or "main")
 
     def _record(self, sid, **fields):
         with self.lock:
@@ -255,6 +288,13 @@ class Executor:
 
     def _execute(self, step):
         sid = step["id"]
+        problem = self._prepare_repo(step) if step["writes"] else None
+        if problem:
+            with self.lock:
+                self.status[sid] = FAILED
+            self._record(sid, status=FAILED, reason=problem)
+            self._say(f"{FAILED:<6} {sid}: {problem}")
+            return
         saved = self.run.state().get("steps", {}).get(sid, {})
         answer = saved.get("answer")
         add_dirs = [str(self.run.path)] + [d for d in step.get("add_dirs", []) if d != step["cwd"]]

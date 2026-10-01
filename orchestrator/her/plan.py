@@ -1,9 +1,15 @@
 import json
 import os
+import re
 from pathlib import Path
 
+from .agents import git_root
 from .config import TIERS
 from .skills import catalog, catalog_text
+
+BRANCH_PATTERN = re.compile(
+    r"(feat|fix|proposal|chore|refactor|docs|test)/([A-Z][A-Z0-9]*-[0-9]+|[a-z0-9]+)(_[a-z0-9]+)+"
+)
 
 PLAN_SCHEMA = {
     "type": "object",
@@ -18,7 +24,11 @@ PLAN_SCHEMA = {
                 "type": "object",
                 "additionalProperties": False,
                 "required": ["name", "path"],
-                "properties": {"name": {"type": "string"}, "path": {"type": "string"}},
+                "properties": {
+                    "name": {"type": "string"},
+                    "path": {"type": "string"},
+                    "base": {"type": "string"},
+                },
             },
         },
         "decisions": {
@@ -56,6 +66,8 @@ PLAN_SCHEMA = {
                     "writes": {"type": "boolean"},
                     "depends_on": {"type": "array", "items": {"type": "string"}},
                     "task": {"type": "string"},
+                    "branch": {"type": "string"},
+                    "fallback_models": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
@@ -119,7 +131,19 @@ def guide_text(config):
         "  unless the request explicitly asks for it.",
         "- `depends_on` lists step ids whose output this step needs. Independent steps run in",
         "  parallel. End code-changing pipelines with a `judge` step.",
-        "- `repos` lists every repo involved with absolute paths.",
+        "- A `judge` step writes <run>/steps/<id>.verdict.json (verdict ship, fix or",
+        "  needs-discussion). A `to-pr` step that depends on a judge step is skipped unless the",
+        "  verdict is ship.",
+        "- A writing step whose cwd is a git repo must set `branch`, shaped",
+        "  `<type>/<CARD-or-word>_<words_with_underscores>` with type feat, fix, proposal, chore,",
+        "  refactor, docs or test (hyphen only inside a card ID, e.g. feat/ML-88_export_csv).",
+        "  The executor checks it out, creating it from the repo `base` when missing. The first",
+        "  writing step in a repo fails with `dirty tree` if the repo has uncommitted changes.",
+        "- A step that fails fast is retried on the same tier with the other agents, then one tier",
+        "  down, at most 3 attempts. Optional `fallback_models` (list of `agent/model`) sets that",
+        "  order instead.",
+        "- `repos` lists every repo involved with absolute paths, and optional `base` (default",
+        "  main) for new branches.",
         "- `title` is a short label shown in the dashboard.",
         "",
         "## Flow",
@@ -162,8 +186,19 @@ def validate(plan, config):
             problems.append(
                 f"step {sid}: model {step.get('model')} not allowed for {step['agent']}/{step.get('tier')}"
             )
-        if not Path(os.path.expanduser(step.get("cwd", ""))).is_dir():
+        cwd = Path(os.path.expanduser(step.get("cwd", "")))
+        if not cwd.is_dir():
             problems.append(f"step {sid}: cwd {step.get('cwd')} does not exist")
+        elif step.get("writes") and not step.get("branch") and git_root(cwd):
+            problems.append(f"step {sid}: writes in a git repo, declare branch")
+        if step.get("branch") and not BRANCH_PATTERN.fullmatch(step["branch"]):
+            problems.append(
+                f"step {sid}: branch {step['branch']} must look like feat/ML-88_short_words or fix/word_more_words"
+            )
+        for entry in step.get("fallback_models", []):
+            agent, _, model = entry.partition("/")
+            if agent not in config.agents() or not model:
+                problems.append(f"step {sid}: fallback model {entry} must be <agent>/<model> with a known agent")
         for dep in step.get("depends_on", []):
             if dep not in ids:
                 problems.append(f"step {sid}: depends on unknown step {dep}")
