@@ -4,7 +4,7 @@ import textwrap
 import time
 from pathlib import Path
 
-from .agents import pretty_lines
+from .agents import assistant_usage, pretty_lines
 
 ORDER = ("running", "blocked", "failed", "done", "pending", "skipped")
 PHASE_END = ("done", "finished-with-failures", "needs-answer")
@@ -25,6 +25,22 @@ def fmt_elapsed(seconds):
     if seconds < 3600:
         return f"{seconds // 60}m{seconds % 60:02d}s"
     return f"{seconds // 3600}h{seconds % 3600 // 60:02d}m"
+
+
+def fmt_tokens(value):
+    if value is None:
+        return "-"
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}".rstrip("0").rstrip(".") + "M"
+    if value >= 100_000:
+        return f"{value / 1_000:.0f}k"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}".rstrip("0").rstrip(".") + "k"
+    return str(value)
+
+
+def fmt_cost(value):
+    return "-" if value is None else f"${value:.2f}"
 
 
 def tilde(path):
@@ -71,7 +87,19 @@ def step_tail(step, info, status, now):
     return ""
 
 
-def step_rows(plan, state, selected, now):
+def step_metrics(info):
+    tokens = info.get("tokens")
+    if not isinstance(tokens, dict):
+        return None, None, info.get("cost")
+    return sum(tokens.values()), tokens.get("output", 0), info.get("cost")
+
+
+def metric_cells(info):
+    tokens, output, cost = step_metrics(info)
+    return f"{fmt_tokens(tokens):>6} {fmt_tokens(output):>6} {fmt_cost(cost):>8}"
+
+
+def step_rows(plan, state, selected, now, width=100):
     steps = plan.get("steps", [])
     w_id = max([len(s["id"]) for s in steps] + [1])
     skills = [f"/her:{s['skill']}" if s.get("skill") else "-" for s in steps]
@@ -84,9 +112,27 @@ def step_rows(plan, state, selected, now):
         status = step_status(state, step["id"])
         tail = step_tail(step, info, status, now)
         mark = ">" if i == selected else " "
-        text = f"{mark} {LABELS.get(status, status):<{w_status}} {step['id']:<{w_id}} {skills[i]:<{w_skill}} {models[i]:<{w_model}} {tail}"
+        left = f"{mark} {LABELS.get(status, status):<{w_status}} {step['id']:<{w_id}} {skills[i]:<{w_skill}} {models[i]:<{w_model}} {tail}".rstrip()
+        metrics = metric_cells(info)
+        text = f"{fit(left, max(width - len(metrics) - 1, 0)):<{max(width - len(metrics) - 1, 0)}} {metrics}"
         rows.append((text.rstrip(), status if status in ORDER else "pending"))
     return rows
+
+
+def metrics_header(width):
+    metrics = f"{'tokens':>6} {'out':>6} {'cost':>8}"
+    left = fit("  status step skill model time", max(width - len(metrics) - 1, 0))
+    return (f"{left:<{max(width - len(metrics) - 1, 0)}} {metrics}".rstrip(), "dim")
+
+
+def totals_row(plan, state, width):
+    values = [step_metrics(state.get("steps", {}).get(step["id"], {})) for step in plan.get("steps", [])]
+    tokens = sum(value[0] for value in values if value[0] is not None) if any(value[0] is not None for value in values) else None
+    output = sum(value[1] for value in values if value[1] is not None) if any(value[1] is not None for value in values) else None
+    costs = [value[2] for value in values if value[2] is not None]
+    metrics = f"{fmt_tokens(tokens):>6} {fmt_tokens(output):>6} {fmt_cost(sum(costs) if costs else None):>8}"
+    left = fit("  total", max(width - len(metrics) - 1, 0))
+    return (f"{left:<{max(width - len(metrics) - 1, 0)}} {metrics}".rstrip(), "head")
 
 
 def blocked_foot(plan, state, width):
@@ -130,17 +176,25 @@ def render(plan, state, selected, width, height, log_lines, now=None, summary_pa
         missing = [m.get("name", "?") for m in plan.get("missing_skills", [])]
         if missing:
             foot.append(("missing skills: " + ", ".join(missing), "dim"))
-    fixed = 4 + len(foot) + 1
+    fixed = 6 + len(foot) + 1
     shown = min(len(steps), max(1, height - fixed - 3))
     start = min(max(selected - shown // 2, 0), max(len(steps) - shown, 0))
-    body = step_rows(plan, state, selected, now)[start : start + shown]
+    body = step_rows(plan, state, selected, now, width)[start : start + shown]
     if not steps:
         body = [("  waiting for a plan...", "dim")]
     sel = steps[selected] if 0 <= selected < len(steps) else None
     detail = f"{sel['id']} | {tilde(sel.get('cwd'))}" if sel else ""
     room = max(height - fixed - len(body), 0)
     tail = wrap(log_lines or [], width - 2)[-room:] if room else []
-    rows = [header_row(plan, state, width), rule, *body, rule, (detail, "head")]
+    rows = [
+        header_row(plan, state, width),
+        rule,
+        metrics_header(width),
+        *body,
+        totals_row(plan, state, width),
+        rule,
+        (detail, "head"),
+    ]
     rows += [("  " + line, "text") for line in tail]
     rows = rows[: height - len(foot) - 1]
     rows += [(t, s) for t, s in foot] if height > 1 else []
@@ -168,6 +222,14 @@ def load(run):
         state = run.state()
     except (OSError, ValueError):
         state = {}
+    for step in (plan or {}).get("steps", []):
+        info = state.get("steps", {}).get(step["id"], {})
+        if info.get("status") != "running" or not run.step_log(step["id"]).exists():
+            continue
+        live = assistant_usage(run.step_log(step["id"]))
+        if live is not None:
+            previous = info.get("tokens") or {}
+            info["tokens"] = {name: previous.get(name, 0) + value for name, value in live.items()}
     return plan or {}, state
 
 

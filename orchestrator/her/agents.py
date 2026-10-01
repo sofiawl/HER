@@ -3,6 +3,12 @@ import subprocess
 from pathlib import Path
 
 QUESTION_PREFIX = "QUESTION:"
+TOKEN_KEYS = {
+    "input": ("input_tokens", "inputTokens"),
+    "cache_write": ("cache_creation_input_tokens", "cacheCreationInputTokens"),
+    "cache_read": ("cache_read_input_tokens", "cacheReadInputTokens"),
+    "output": ("output_tokens", "outputTokens"),
+}
 
 
 def claude_command(config, prompt, model, add_dirs, writes, extra=()):
@@ -105,12 +111,50 @@ def session_id(log_path):
     return found
 
 
+def normalized_usage(value):
+    if not isinstance(value, dict):
+        return None
+    nested = value.get("usage")
+    sources = [nested, value] if isinstance(nested, dict) else [value]
+    tokens = {}
+    found = False
+    for name, aliases in TOKEN_KEYS.items():
+        token = next(
+            (source[key] for source in sources for key in aliases if isinstance(source.get(key), (int, float))),
+            0,
+        )
+        tokens[name] = int(token)
+        found = found or any(key in source for source in sources for key in aliases)
+    return tokens if found else None
+
+
+def assistant_usage(log_path):
+    messages = {}
+    anonymous = []
+    for event in _events(log_path):
+        if event.get("type") != "assistant":
+            continue
+        message = event.get("message") or {}
+        usage = normalized_usage(message)
+        if usage is None:
+            continue
+        if message.get("id"):
+            messages[message["id"]] = usage
+        else:
+            anonymous.append(usage)
+    usages = [*messages.values(), *anonymous]
+    if not usages:
+        return None
+    return {name: sum(usage[name] for usage in usages) for name in TOKEN_KEYS}
+
+
 def result_info(log_path):
     info = {
         "subtype": None,
         "is_error": False,
         "permission_denials": [],
         "usage": None,
+        "tokens": None,
         "cost": None,
         "models": [],
         "blocked": False,
@@ -137,7 +181,10 @@ def result_info(log_path):
             for d in event.get("permission_denials") or []
         ]
         info["usage"] = event.get("usage") if isinstance(event.get("usage"), dict) else None
-        cost = event.get("total_cost_usd")
+        info["tokens"] = normalized_usage(event)
+        cost = event.get("total_cost_usd", event.get("costUSD"))
+        if not isinstance(cost, (int, float)) and isinstance(event.get("usage"), dict):
+            cost = event["usage"].get("costUSD")
         info["cost"] = float(cost) if isinstance(cost, (int, float)) else None
         usage_by_model = event.get("modelUsage")
         info["models"] = list(usage_by_model) if isinstance(usage_by_model, dict) else []

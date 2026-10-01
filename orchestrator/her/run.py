@@ -7,7 +7,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
-from .agents import build_command, final_result, git, git_root, result_info, run_logged
+from .agents import TOKEN_KEYS, build_command, final_result, git, git_root, result_info, run_logged
 from .config import RUNS_DIR
 
 DONE, FAILED, RUNNING, PENDING, SKIPPED, BLOCKED = "done", "failed", "running", "pending", "skipped", "blocked"
@@ -301,6 +301,10 @@ class Executor:
         writes = step["writes"] or step.get("skill") == "judge"
         log_path = self.run.step_log(sid)
         attempts = []
+        tokens = {name: 0 for name in TOKEN_KEYS}
+        has_tokens = False
+        cost = 0.0
+        has_cost = False
         for agent, model in candidates(self.config, step):
             current = dict(step, agent=agent, model=model)
             resume = None
@@ -321,8 +325,20 @@ class Executor:
             info = result_info(log_path)
             status, reason = step_verdict(code, result, info)
             seconds = int(time.time() - began)
+            if info["tokens"] is not None:
+                has_tokens = True
+                for name in tokens:
+                    tokens[name] += info["tokens"][name]
+            if info["cost"] is not None:
+                has_cost = True
+                cost += info["cost"]
             attempts.append({"agent": agent, "model": model, "status": status, "reason": reason, "seconds": seconds})
-            self._record(sid, attempts=attempts)
+            self._record(
+                sid,
+                attempts=attempts,
+                tokens=tokens if has_tokens else None,
+                cost=cost if has_cost else None,
+            )
             if code < 0 or not fast_failure(status, seconds, info):
                 break
         self.run.step_output(sid).write_text(result)
@@ -335,6 +351,8 @@ class Executor:
             question=info["question"] if blocked else None,
             session_id=info["session_id"] if blocked else None,
             answer=None,
+            tokens=tokens if has_tokens else None,
+            cost=cost if has_cost else None,
         )
         why = f" ({reason})" if reason else ""
         self._say(f"{status:<6} {sid} in {elapsed}s{why} -> {self.run.step_output(sid)}")
@@ -418,9 +436,16 @@ class Executor:
         lines = [f"# HER run {self.run.id}", "", self.plan["summary"], "", "## Steps", ""]
         steps = self.run.state().get("steps", {})
         for step in self.plan["steps"]:
-            reason = steps.get(step["id"], {}).get("reason")
+            info = steps.get(step["id"], {})
+            reason = info.get("reason")
             why = f" ({reason})" if reason else ""
-            lines.append(f"- `{step['id']}` {self.status[step['id']]}{why}: {self.run.step_output(step['id'])}")
+            tokens = info.get("tokens")
+            token_text = ", ".join(f"{name} {tokens[name]}" for name in TOKEN_KEYS) if tokens else "-"
+            cost = f"${info['cost']:.6f}" if info.get("cost") is not None else "-"
+            lines.append(
+                f"- `{step['id']}` {self.status[step['id']]}{why}: "
+                f"tokens {token_text}; cost {cost}; {self.run.step_output(step['id'])}"
+            )
         blocked = [sid for sid, value in self.status.items() if value == BLOCKED]
         if blocked:
             lines += ["", "## Open questions", ""]

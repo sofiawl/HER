@@ -25,14 +25,14 @@ if behavior == "crash":
     print("model not available")
     sys.exit(1)
 if behavior == "error":
-    print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True, "result": "API error"}))
+    print(json.dumps({"type": "result", "subtype": "error_during_execution", "is_error": True, "result": "API error", "usage": {"input_tokens": 10, "output_tokens": 1}, "total_cost_usd": 0.1}))
     sys.exit(0)
 if behavior == "denied":
     print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "tried"}]}}))
     print(json.dumps({"type": "result", "subtype": "success", "result": "tried", "permission_denials": [{"tool_name": "Bash"}]}))
     sys.exit(0)
 print(json.dumps({"type": "assistant", "message": {"content": [{"type": "text", "text": "done on " + model}]}}))
-print(json.dumps({"type": "result", "subtype": "success", "result": "done on " + model}))
+print(json.dumps({"type": "result", "subtype": "success", "result": "done on " + model, "inputTokens": 20, "outputTokens": 2, "costUSD": 0.2}))
 """
 
 
@@ -90,6 +90,9 @@ class FallbackExecutionTest(unittest.TestCase):
             self.assertEqual([(a["agent"], a["model"]) for a in state["attempts"]],
                              [("claude", "c-sonnet"), ("cursor", "x-sonnet"), ("claude", "c-haiku")])
             self.assertEqual(state["attempts"][0]["reason"], "exit code 1")
+            self.assertEqual(state["tokens"], {"input": 30, "cache_write": 0, "cache_read": 0, "output": 3})
+            self.assertAlmostEqual(state["cost"], 0.3)
+            self.assertIn("tokens input 30, cache_write 0, cache_read 0, output 3; cost $0.300000", run.read("summary.md"))
             retries = [line for line in said if "retry  work on" in line]
             self.assertEqual(len(retries), 2)
             self.assertIn("retry  work on cursor/x-sonnet (exit code 1)", retries[0])
