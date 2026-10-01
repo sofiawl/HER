@@ -83,6 +83,24 @@ class Run:
     def step_output(self, sid):
         return self.path / "steps" / f"{sid}.md"
 
+    def verdict_path(self, sid):
+        return self.path / "steps" / f"{sid}.verdict.json"
+
+
+VERDICTS = ("ship", "fix", "needs-discussion")
+
+
+def read_verdict(path):
+    try:
+        data = json.loads(path.read_text())
+    except FileNotFoundError:
+        return "missing", f"no verdict file at {path}"
+    except (OSError, json.JSONDecodeError):
+        return "invalid", f"{path} is not valid JSON"
+    if not isinstance(data, dict) or data.get("verdict") not in VERDICTS:
+        return "invalid", f"{path} has no verdict among {', '.join(VERDICTS)}"
+    return data["verdict"], str(data.get("why", "")).strip()
+
 
 def step_rules(step):
     return [
@@ -111,6 +129,14 @@ def step_prompt(run, plan, step, earlier=None):
     if deps:
         lines += ["", "## Outputs of earlier steps (read them first)"]
         lines += [f"- {dep}: {run.step_output(dep)}" for dep in deps]
+    if step.get("skill") == "judge":
+        lines += [
+            "", "## Verdict file",
+            f"Write your verdict to {run.verdict_path(step['id'])} as JSON with the keys `verdict`",
+            "(one of ship, fix, needs-discussion), `why` (one sentence) and `table` (the metrics table",
+            "as a markdown string). This is the only file you may write when the step is read only.",
+            "A to-pr step that depends on you runs only when the verdict is ship.",
+        ]
     if earlier:
         lines += ["", f"Earlier question: {earlier[0]}", f"Sofia's answer: {earlier[1]}"]
     return "\n".join(lines + [""] + step_rules(step))
@@ -155,6 +181,7 @@ class Executor:
             s["id"]: state.get(s["id"], {}).get("status") if state.get(s["id"], {}).get("status") in (DONE, BLOCKED) else PENDING
             for s in self.plan["steps"]
         }
+        self.steps = {s["id"]: s for s in self.plan["steps"]}
         self.started = {}
         self.processes = {}
 
@@ -181,6 +208,17 @@ class Executor:
             return False
         if not all(self.status[d] == DONE for d in deps):
             return False
+        if step.get("skill") == "to-pr":
+            for dep in deps:
+                if self.steps[dep].get("skill") != "judge":
+                    continue
+                verdict, why = read_verdict(self.run.verdict_path(dep))
+                if verdict != "ship":
+                    reason = f"judge verdict: {verdict}: {why}"
+                    self.status[step["id"]] = SKIPPED
+                    self._record(step["id"], status=SKIPPED, reason=reason)
+                    self._say(f"skip   {step['id']}: {reason}")
+                    return False
         if step["writes"]:
             busy = [
                 s for s in self.plan["steps"]
@@ -199,8 +237,9 @@ class Executor:
         else:
             prompt = step_prompt(self.run, self.plan, step, (saved.get("question"), answer) if answer else None)
         add_dirs = [str(self.run.path)] + [d for d in step.get("add_dirs", []) if d != step["cwd"]]
+        writes = step["writes"] or step.get("skill") == "judge"
         command = build_command(
-            self.config, step["agent"], prompt, step["model"], step["cwd"], add_dirs, step["writes"], resume
+            self.config, step["agent"], prompt, step["model"], step["cwd"], add_dirs, writes, resume
         )
         log_path = self.run.step_log(sid)
         process = run_logged(command, step["cwd"], log_path, append=resume is not None)
@@ -300,9 +339,11 @@ class Executor:
 
     def _write_summary(self):
         lines = [f"# HER run {self.run.id}", "", self.plan["summary"], "", "## Steps", ""]
-        for step in self.plan["steps"]:
-            lines.append(f"- `{step['id']}` {self.status[step['id']]}: {self.run.step_output(step['id'])}")
         steps = self.run.state().get("steps", {})
+        for step in self.plan["steps"]:
+            reason = steps.get(step["id"], {}).get("reason")
+            why = f" ({reason})" if reason else ""
+            lines.append(f"- `{step['id']}` {self.status[step['id']]}{why}: {self.run.step_output(step['id'])}")
         blocked = [sid for sid, value in self.status.items() if value == BLOCKED]
         if blocked:
             lines += ["", "## Open questions", ""]
