@@ -56,6 +56,15 @@ You do steps 1 to 7 yourself. Do not skip a step.
    dashboard opens in a new Ghostty window. Tell her the id, that
    `her watch <id>` reopens the dashboard and `her stop <id>` stops the run.
 
+## Blocked steps
+
+A step that needs Sofia ends with `QUESTION: ...` and shows as `needs answer`
+in `her watch` and `her status` (state `blocked`). When a run has BLOCKED steps,
+show Sofia each question exactly as written, with its step id. After she
+replies, run `her answer <step_id> "<her reply>"` for her and keep watching the
+run. Never answer on her behalf, never rephrase her reply into a decision she
+did not make.
+
 ## Later
 
 When Sofia asks how it went: run `her status <id>`, `her show <id> <step>`,

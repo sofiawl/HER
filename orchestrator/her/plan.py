@@ -103,6 +103,8 @@ def guide_text(config):
         "- Anything that needs Sofia's judgment (a domain rule, a trade-off, naming, scope) is settled",
         "  by you through grilling BEFORE writing the plan. Facts you can look up are never questions:",
         "  read the repos yourself.",
+        "- A step that still needs Sofia ends its reply with `QUESTION: ...`. It becomes BLOCKED,",
+        "  its dependents wait, and `her answer <step_id> \"...\"` resumes it.",
         "- Write the settled decisions to <run>/decisions.md, one bullet per decision with the",
         "  question, the answer and why. Every step receives that file.",
         "- plan.json `decisions` must be empty, or only list decisions already settled in decisions.md.",
