@@ -99,8 +99,9 @@ def step_prompt(run, plan, step):
         "- Follow HER rules: no code comments, no em dash, no en dash, no emojis.",
         "- Do not commit, push, open PRs or install anything unless your task says so.",
         "- You may edit files." if step["writes"] else "- Read only: do not edit any file.",
-        "- You run headless: nobody will answer questions. If blocked on a human decision, stop and",
-        "  report the question instead of guessing.",
+        "- You run headless: nobody answers during this run.",
+        "- If you cannot continue without a decision from Sofia, stop, change nothing more, and end",
+        "  your final reply with one line `QUESTION: <one clear question with the options>`.",
         "- End with a short report: what you did, files changed, checks run and their results,",
         "  open questions.",
     ]
