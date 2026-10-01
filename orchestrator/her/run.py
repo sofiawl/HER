@@ -117,7 +117,11 @@ def step_rules(step):
 
 
 def step_prompt(run, plan, step, earlier=None):
-    lines = [f"You are step `{step['id']}` ({step['title']}) of a HER orchestrator run."]
+    lines = [
+        f"HER headless run. Decisions: {run.path / 'decisions.md'}",
+        "",
+        f"You are step `{step['id']}` ({step['title']}) of a HER orchestrator run.",
+    ]
     if step.get("skill"):
         handle = f"her-{step['skill']}" if step["agent"] == "cursor" else f"her:{step['skill']}"
         lines.append(f"Use the HER skill `{handle}` for this step.")
@@ -209,6 +213,7 @@ class Executor:
         self.plan = run.plan()
         self.out = out
         self.lock = threading.RLock()
+        self.wake = threading.Event()
         self.cwd_locks = {}
         state = run.state().get("steps", {})
         self.status = {
@@ -287,6 +292,12 @@ class Executor:
         return True
 
     def _execute(self, step):
+        try:
+            self._execute_step(step)
+        finally:
+            self.wake.set()
+
+    def _execute_step(self, step):
         sid = step["id"]
         problem = self._prepare_repo(step) if step["writes"] else None
         if problem:
@@ -409,14 +420,19 @@ class Executor:
                     threads.append(thread)
                     running += 1
             with self.lock:
-                idle = RUNNING not in self.status.values() and before == self.status
+                busy = RUNNING in self.status.values()
+                idle = not busy and before == self.status
             if idle:
                 break
             if sys.stdout.isatty():
                 with self.lock:
                     sys.stdout.write("\r\033[K" + self._status_line())
                     sys.stdout.flush()
-            time.sleep(1)
+            # Poll once a second for answers while steps run, waking at once when one ends.
+            # With nothing running, the loop itself changed a status (a skip), so recheck now.
+            if busy:
+                self.wake.wait(1)
+                self.wake.clear()
         for thread in threads:
             thread.join()
         if sys.stdout.isatty():
