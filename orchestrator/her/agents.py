@@ -25,16 +25,17 @@ def cursor_command(config, prompt, model, add_dirs, writes, cwd):
     return args
 
 
-def build_command(config, agent, prompt, model, cwd, add_dirs, writes):
+def build_command(config, agent, prompt, model, cwd, add_dirs, writes, resume=None):
     if agent == "claude":
-        return claude_command(config, prompt, model, add_dirs, writes)
+        extra = ("--resume", resume) if resume else ()
+        return claude_command(config, prompt, model, add_dirs, writes, extra)
     if agent == "cursor":
         return cursor_command(config, prompt, model, add_dirs, writes, cwd)
     raise ValueError(f"unknown agent: {agent}")
 
 
-def run_logged(command, cwd, log_path):
-    with open(log_path, "w") as log:
+def run_logged(command, cwd, log_path, append=False):
+    with open(log_path, "a" if append else "w") as log:
         process = subprocess.Popen(command, cwd=cwd, stdout=log, stderr=subprocess.STDOUT, text=True)
         return process
 

@@ -80,7 +80,21 @@ class Run:
         return self.path / "steps" / f"{sid}.md"
 
 
-def step_prompt(run, plan, step):
+def step_rules(step):
+    return [
+        "## Rules",
+        "- Follow HER rules: no code comments, no em dash, no en dash, no emojis.",
+        "- Do not commit, push, open PRs or install anything unless your task says so.",
+        "- You may edit files." if step["writes"] else "- Read only: do not edit any file.",
+        "- You run headless: nobody answers during this run.",
+        "- If you cannot continue without a decision from Sofia, stop, change nothing more, and end",
+        "  your final reply with one line `QUESTION: <one clear question with the options>`.",
+        "- End with a short report: what you did, files changed, checks run and their results,",
+        "  open questions.",
+    ]
+
+
+def step_prompt(run, plan, step, earlier=None):
     lines = [f"You are step `{step['id']}` ({step['title']}) of a HER orchestrator run."]
     if step.get("skill"):
         handle = f"her-{step['skill']}" if step["agent"] == "cursor" else f"her:{step['skill']}"
@@ -93,19 +107,13 @@ def step_prompt(run, plan, step):
     if deps:
         lines += ["", "## Outputs of earlier steps (read them first)"]
         lines += [f"- {dep}: {run.step_output(dep)}" for dep in deps]
-    lines += [
-        "",
-        "## Rules",
-        "- Follow HER rules: no code comments, no em dash, no en dash, no emojis.",
-        "- Do not commit, push, open PRs or install anything unless your task says so.",
-        "- You may edit files." if step["writes"] else "- Read only: do not edit any file.",
-        "- You run headless: nobody answers during this run.",
-        "- If you cannot continue without a decision from Sofia, stop, change nothing more, and end",
-        "  your final reply with one line `QUESTION: <one clear question with the options>`.",
-        "- End with a short report: what you did, files changed, checks run and their results,",
-        "  open questions.",
-    ]
-    return "\n".join(lines)
+    if earlier:
+        lines += ["", f"Earlier question: {earlier[0]}", f"Sofia's answer: {earlier[1]}"]
+    return "\n".join(lines + [""] + step_rules(step))
+
+
+def resume_prompt(step, answer):
+    return "\n".join([f"Sofia's answer: {answer}", "", "Continue your task with this answer."] + [""] + step_rules(step))
 
 
 def step_verdict(code, result, info):
@@ -180,13 +188,18 @@ class Executor:
 
     def _execute(self, step):
         sid = step["id"]
-        prompt = step_prompt(self.run, self.plan, step)
+        saved = self.run.state().get("steps", {}).get(sid, {})
+        answer, resume = saved.get("answer"), None
+        if answer and step["agent"] == "claude" and saved.get("session_id"):
+            prompt, resume = resume_prompt(step, answer), saved["session_id"]
+        else:
+            prompt = step_prompt(self.run, self.plan, step, (saved.get("question"), answer) if answer else None)
         add_dirs = [str(self.run.path)] + [d for d in step.get("add_dirs", []) if d != step["cwd"]]
         command = build_command(
-            self.config, step["agent"], prompt, step["model"], step["cwd"], add_dirs, step["writes"]
+            self.config, step["agent"], prompt, step["model"], step["cwd"], add_dirs, step["writes"], resume
         )
         log_path = self.run.step_log(sid)
-        process = run_logged(command, step["cwd"], log_path)
+        process = run_logged(command, step["cwd"], log_path, append=resume is not None)
         self.processes[sid] = process
         code = process.wait()
         result = final_result(log_path)
@@ -201,6 +214,7 @@ class Executor:
             sid, status=status, exit_code=code, seconds=elapsed, reason=reason,
             question=info["question"] if blocked else None,
             session_id=info["session_id"] if blocked else None,
+            answer=None,
         )
         why = f" ({reason})" if reason else ""
         self._say(f"{status:<6} {sid} in {elapsed}s{why} -> {self.run.step_output(sid)}")
