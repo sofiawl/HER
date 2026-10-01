@@ -30,6 +30,22 @@ DEFAULT_MODELS = {
     },
 }
 
+DEFAULT_MODEL_NOTES = {
+    "claude/claude-haiku-4-5-20251001": {"strengths": "mechanical edits, grep, inventory, known commands", "relative_cost": 1},
+    "claude/claude-sonnet-5-5": {"strengths": "code exploration, routine implementation, test runs", "relative_cost": 2},
+    "claude/claude-opus-5-5": {"strengths": "multi-file design, long careful writing, synthesis", "relative_cost": 4},
+    "claude/claude-fable-5-1": {"strengths": "risky decisions, final review, verdicts", "relative_cost": 5},
+    "cursor/composer-2.5-fast": {"strengths": "fast mechanical edits inside a repo", "relative_cost": 1},
+    "cursor/gemini-3.8-flash-high": {"strengths": "cheap reading, summaries, large context scans", "relative_cost": 1},
+    "cursor/grok-4.7-high-fast": {"strengths": "quick mechanical chores, shell-heavy work", "relative_cost": 1},
+    "cursor/cursor-grok-4.6-high-fast": {"strengths": "quick mechanical chores, shell-heavy work", "relative_cost": 1},
+    "cursor/claude-sonnet-5-5-high": {"strengths": "code exploration, routine implementation", "relative_cost": 2},
+    "cursor/gpt-5.6-sol-medium": {"strengths": "routine implementation, debugging, test fixes", "relative_cost": 2},
+    "cursor/claude-opus-5-thinking-high": {"strengths": "deep multi-file design with extended thinking", "relative_cost": 4},
+    "cursor/claude-opus-5-5-medium": {"strengths": "multi-file design, long writing", "relative_cost": 4},
+    "cursor/claude-fable-5-1-thinking-high": {"strengths": "risky decisions, final review, verdicts", "relative_cost": 5},
+}
+
 CLAUDE_READ_TOOLS = [
     "Read", "Grep", "Glob", "WebFetch", "WebSearch",
     "Bash(git *)", "Bash(gh pr view *)", "Bash(gh pr list *)",
@@ -63,6 +79,8 @@ INTERACTIVE_SKILLS = {
 @dataclass
 class Config:
     models: dict = field(default_factory=lambda: DEFAULT_MODELS)
+    model_notes: dict = field(default_factory=lambda: DEFAULT_MODEL_NOTES)
+    prefer_agents: list = field(default_factory=list)
     max_parallel: int = 3
     claude_bin: str = "claude"
     cursor_bin: str = "cursor-agent"
@@ -77,6 +95,9 @@ class Config:
 
     def agents(self):
         return list(self.models)
+
+    def binary(self, agent):
+        return getattr(self, f"{agent}_bin", agent)
 
     def allowed(self, agent, tier):
         return self.models.get(agent, {}).get(tier, [])
@@ -103,6 +124,8 @@ def load_config():
             for agent, tiers in value.items():
                 merged.setdefault(agent, {}).update(tiers)
             config.models = merged
+        elif key == "model_notes":
+            config.model_notes = {**config.model_notes, **value}
         elif hasattr(config, key):
             setattr(config, key, value)
     return config

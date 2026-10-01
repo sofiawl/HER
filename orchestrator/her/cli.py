@@ -134,6 +134,8 @@ def check_run(config, run):
             print(f"  - {problem}")
         return False
     show_plan(plan)
+    for warning in planner.warnings(plan, config):
+        print(f"WARNING: {warning}")
     return True
 
 

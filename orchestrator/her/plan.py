@@ -1,15 +1,18 @@
 import json
 import os
 import re
+import shutil
 from pathlib import Path
 
-from .agents import git_root
+from .agents import git, git_root
 from .config import TIERS
 from .skills import catalog, catalog_text
 
 BRANCH_PATTERN = re.compile(
     r"(feat|fix|proposal|chore|refactor|docs|test)/([A-Z][A-Z0-9]*-[0-9]+|[a-z0-9]+)(_[a-z0-9]+)+"
 )
+
+PER_REPO_SKILLS = ("judge", "to-pr")
 
 PLAN_SCHEMA = {
     "type": "object",
@@ -92,8 +95,21 @@ def _models_text(config):
     lines = []
     for agent in config.agents():
         for tier in TIERS:
-            lines.append(f"- agent `{agent}`, tier `{tier}`: {', '.join(config.allowed(agent, tier))}")
+            lines.append(f"- agent `{agent}`, tier `{tier}`:")
+            for model in config.allowed(agent, tier):
+                note = config.model_notes.get(f"{agent}/{model}", {})
+                detail = f" - {note.get('strengths', 'no notes')} (relative cost {note.get('relative_cost', '?')}/5)"
+                lines.append(f"  - `{model}`{detail}")
     return "\n".join(lines)
+
+
+def _preference_lines(config):
+    if not config.prefer_agents:
+        return []
+    return [
+        "- Sofia's agent preference order is " + ", ".join(f"`{a}`" for a in config.prefer_agents)
+        + ". Use it to break ties between equally good fits before comparing cost.",
+    ]
 
 
 def guide_text(config):
@@ -120,8 +136,14 @@ def guide_text(config):
         "- Write the settled decisions to <run>/decisions.md, one bullet per decision with the",
         "  question, the answer and why. Every step receives that file.",
         "- plan.json `decisions` must be empty, or only list decisions already settled in decisions.md.",
-        "- Pick the cheapest tier that can do each step. Prefer agent `claude` unless another agent",
-        "  is clearly cheaper for a mechanical step.",
+        "- Pick the cheapest tier that can do each step. Pick the model that fits the step type best,",
+        "  break ties on relative cost, and do not default to one agent.",
+        *_preference_lines(config),
+        "- Steps run headless and cannot ask Sofia. Every decision a step needs must already be in",
+        "  decisions.md and in the step's task text.",
+        "- `judge` and `to-pr` run once per repo, with cwd set to that repo and no other repo in",
+        "  add_dirs. When more than one repo has `to-pr` steps, add a final step that links the",
+        "  companion PRs to each other.",
         "- `skill` is a skill name from the list, or null when no skill fits. When a step needs a",
         "  capability no HER skill covers, still plan it with skill null and add an entry to",
         "  `missing_skills` describing the skill that should exist.",
@@ -202,9 +224,75 @@ def validate(plan, config):
         for dep in step.get("depends_on", []):
             if dep not in ids:
                 problems.append(f"step {sid}: depends on unknown step {dep}")
+        if skill in PER_REPO_SKILLS:
+            problems.extend(_other_repo_problems(step, plan.get("repos", [])))
     if _has_cycle(plan.get("steps", [])):
         problems.append("depends_on has a cycle")
+    problems.extend(_preflight_problems(plan, config))
     return problems
+
+
+def _resolved(path):
+    return Path(os.path.expanduser(path)).resolve()
+
+
+def _other_repo_problems(step, repos):
+    own = _resolved(step.get("cwd", ""))
+    problems = []
+    for repo in repos:
+        root = _resolved(repo.get("path", ""))
+        if own == root or root in own.parents:
+            continue
+        for extra in step.get("add_dirs", []):
+            path = _resolved(extra)
+            if path == root or root in path.parents:
+                problems.append(
+                    f"step {step['id']}: {step['skill']} runs once per repo, remove {repo.get('name', root)} from add_dirs"
+                )
+                break
+    return problems
+
+
+def _dirty_files(path):
+    found = git(path, "status", "--porcelain")
+    return [line for line in found.stdout.splitlines() if line.strip()] if found.returncode == 0 else []
+
+
+def _preflight_problems(plan, config):
+    problems = []
+    steps = plan.get("steps", [])
+    for agent in sorted({step.get("agent") for step in steps if step.get("agent") in config.agents()}):
+        if shutil.which(config.binary(agent)) is None:
+            problems.append(f"agent {agent}: binary {config.binary(agent)} not found on PATH")
+    writers = [step for step in steps if step.get("writes")]
+    for repo in plan.get("repos", []):
+        root = _resolved(repo.get("path", ""))
+        if not root.is_dir() or git_root(root) is None:
+            problems.append(f"repo {repo.get('name', root)}: {root} is not a git repo")
+            continue
+        touched = any(
+            root in _resolved(p).parents or _resolved(p) == root
+            for step in writers
+            for p in [step.get("cwd", ""), *step.get("add_dirs", [])]
+        )
+        dirty = _dirty_files(root) if touched else []
+        if dirty:
+            problems.append(
+                f"repo {repo.get('name', root)}: dirty tree, commit or stash first: "
+                + ", ".join(line.strip() for line in dirty[:10])
+                + (f" and {len(dirty) - 10} more" if len(dirty) > 10 else "")
+            )
+    return problems
+
+
+def warnings(plan, config):
+    used = {step.get("agent") for step in plan.get("steps", [])}
+    if len(used) == 1 and len(config.agents()) > 1:
+        return [
+            f"every step uses agent {next(iter(used))} while {len(config.agents())} agents are configured, "
+            "check that no step fits another agent better"
+        ]
+    return []
 
 
 def _has_cycle(steps):
