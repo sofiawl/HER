@@ -6,8 +6,9 @@ from pathlib import Path
 
 from .agents import pretty_lines
 
-ORDER = ("running", "failed", "done", "pending", "skipped")
-PHASE_END = ("done", "finished-with-failures")
+ORDER = ("running", "blocked", "failed", "done", "pending", "skipped")
+PHASE_END = ("done", "finished-with-failures", "needs-answer")
+LABELS = {"blocked": "needs answer"}
 HINTS = "[up/down] step  [enter] full log  [q] close (run continues)"
 VIEW_HINTS = "[up/down PgUp/PgDn g/G] scroll  [q/esc] back"
 
@@ -52,7 +53,7 @@ def step_status(state, sid):
 def default_selection(plan, state):
     steps = (plan or {}).get("steps", [])
     statuses = [step_status(state, s["id"]) for s in steps]
-    for wanted in ("running", "failed"):
+    for wanted in ("running", "blocked", "failed"):
         if wanted in statuses:
             return statuses.index(wanted)
     return max(len(steps) - 1, 0)
@@ -65,7 +66,7 @@ def step_tail(step, info, status, now):
             return fmt_elapsed(max(now - started, 0))
     if status == "pending" and step.get("depends_on"):
         return "<- " + ", ".join(step["depends_on"])
-    if status in ("done", "failed", "running") and info.get("seconds") is not None:
+    if status in ("done", "failed", "running", "blocked") and info.get("seconds") is not None:
         return fmt_elapsed(info["seconds"])
     return ""
 
@@ -77,14 +78,28 @@ def step_rows(plan, state, selected, now):
     models = [short_model(s.get("agent"), s.get("model")) for s in steps]
     w_skill, w_model = max(map(len, skills), default=1), max(map(len, models), default=1)
     rows = []
+    w_status = max([8] + [len(LABELS.get(step_status(state, s["id"]), "")) for s in steps])
     for i, step in enumerate(steps):
         info = state.get("steps", {}).get(step["id"], {})
         status = step_status(state, step["id"])
         tail = step_tail(step, info, status, now)
         mark = ">" if i == selected else " "
-        text = f"{mark} {status:<8} {step['id']:<{w_id}} {skills[i]:<{w_skill}} {models[i]:<{w_model}} {tail}"
+        text = f"{mark} {LABELS.get(status, status):<{w_status}} {step['id']:<{w_id}} {skills[i]:<{w_skill}} {models[i]:<{w_model}} {tail}"
         rows.append((text.rstrip(), status if status in ORDER else "pending"))
     return rows
+
+
+def blocked_foot(plan, state, width):
+    asking = [
+        (s["id"], state["steps"][s["id"]].get("question") or "")
+        for s in plan.get("steps", [])
+        if step_status(state, s["id"]) == "blocked"
+    ]
+    if not asking:
+        return []
+    foot = [(line, "blocked") for sid, question in asking for line in wrap([f"{sid} needs answer: {question}"], width)]
+    foot.append((fit(f'answer with: her answer {asking[0][0]} "..."', width), "head"))
+    return foot
 
 
 def header_row(plan, state, width):
@@ -109,7 +124,7 @@ def render(plan, state, selected, width, height, log_lines, now=None, summary_pa
     now = time.time() if now is None else now
     steps = plan.get("steps", [])
     rule = ("-" * width, "dim")
-    foot = []
+    foot = blocked_foot(plan, state, width)
     if state.get("phase") in PHASE_END:
         foot.append((f"{state['phase']}: {summary_path or 'summary.md'}", "head"))
         missing = [m.get("name", "?") for m in plan.get("missing_skills", [])]
@@ -172,7 +187,7 @@ def attrs():
     if not curses.has_colors():
         return {"head": curses.A_BOLD, "dim": curses.A_DIM, "skipped": curses.A_DIM}
     curses.use_default_colors()
-    for i, color in enumerate((curses.COLOR_GREEN, curses.COLOR_YELLOW, curses.COLOR_RED), 1):
+    for i, color in enumerate((curses.COLOR_GREEN, curses.COLOR_YELLOW, curses.COLOR_RED, curses.COLOR_CYAN), 1):
         curses.init_pair(i, color, -1)
     return {
         "head": curses.A_BOLD,
@@ -181,6 +196,7 @@ def attrs():
         "done": curses.color_pair(1),
         "running": curses.color_pair(2),
         "failed": curses.color_pair(3),
+        "blocked": curses.color_pair(4),
     }
 
 
