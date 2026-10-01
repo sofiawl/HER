@@ -168,6 +168,31 @@ def step_verdict(code, result, info):
     return DONE, None
 
 
+MAX_ATTEMPTS = 3
+FAST_FAIL_SECONDS = 30
+
+
+def candidates(config, step):
+    if step.get("fallback_models"):
+        fallbacks = [tuple(entry.split("/", 1)) for entry in step["fallback_models"]]
+    else:
+        fallbacks = config.fallbacks(step["agent"], step.get("tier"))
+    chain = [(step["agent"], step["model"])]
+    for option in fallbacks:
+        if option not in chain:
+            chain.append(option)
+    return chain[:MAX_ATTEMPTS]
+
+
+def fast_failure(status, seconds, info):
+    if status != FAILED:
+        return False
+    if seconds < FAST_FAIL_SECONDS and not info["has_text"]:
+        return True
+    errored = info["is_error"] or str(info["subtype"] or "").startswith("error")
+    return errored and not info["tool_uses"]
+
+
 class Executor:
     def __init__(self, config, run, out=print):
         self.config = config
@@ -231,24 +256,36 @@ class Executor:
     def _execute(self, step):
         sid = step["id"]
         saved = self.run.state().get("steps", {}).get(sid, {})
-        answer, resume = saved.get("answer"), None
-        if answer and step["agent"] == "claude" and saved.get("session_id"):
-            prompt, resume = resume_prompt(step, answer), saved["session_id"]
-        else:
-            prompt = step_prompt(self.run, self.plan, step, (saved.get("question"), answer) if answer else None)
+        answer = saved.get("answer")
         add_dirs = [str(self.run.path)] + [d for d in step.get("add_dirs", []) if d != step["cwd"]]
         writes = step["writes"] or step.get("skill") == "judge"
-        command = build_command(
-            self.config, step["agent"], prompt, step["model"], step["cwd"], add_dirs, writes, resume
-        )
         log_path = self.run.step_log(sid)
-        process = run_logged(command, step["cwd"], log_path, append=resume is not None)
-        self.processes[sid] = process
-        code = process.wait()
-        result = final_result(log_path)
+        attempts = []
+        for agent, model in candidates(self.config, step):
+            current = dict(step, agent=agent, model=model)
+            resume = None
+            if attempts:
+                self._say(f"retry  {sid} on {agent}/{model} ({attempts[-1]['reason']})")
+                log_path.rename(log_path.with_name(f"{sid}.attempt{len(attempts)}.jsonl"))
+            if answer and not attempts and agent == "claude" and saved.get("session_id"):
+                prompt, resume = resume_prompt(current, answer), saved["session_id"]
+            else:
+                earlier = (saved.get("question"), answer) if answer else None
+                prompt = step_prompt(self.run, self.plan, current, earlier)
+            command = build_command(self.config, agent, prompt, model, step["cwd"], add_dirs, writes, resume)
+            began = time.time()
+            process = run_logged(command, step["cwd"], log_path, append=resume is not None)
+            self.processes[sid] = process
+            code = process.wait()
+            result = final_result(log_path)
+            info = result_info(log_path)
+            status, reason = step_verdict(code, result, info)
+            seconds = int(time.time() - began)
+            attempts.append({"agent": agent, "model": model, "status": status, "reason": reason, "seconds": seconds})
+            self._record(sid, attempts=attempts)
+            if code < 0 or not fast_failure(status, seconds, info):
+                break
         self.run.step_output(sid).write_text(result)
-        info = result_info(log_path)
-        status, reason = step_verdict(code, result, info)
         elapsed = int(time.time() - self.started[sid])
         with self.lock:
             self.status[sid] = status

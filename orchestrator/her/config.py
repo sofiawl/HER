@@ -85,6 +85,12 @@ class Config:
         options = self.allowed(agent, tier)
         return options[0] if options else None
 
+    def fallbacks(self, agent, tier):
+        lower = list(reversed(TIERS[: TIERS.index(tier)])) if tier in TIERS else []
+        candidates = [(other, self.default_model(other, tier)) for other in self.agents() if other != agent]
+        candidates += [(agent, self.default_model(agent, below)) for below in lower]
+        return [(name, model) for name, model in candidates if model]
+
 
 def load_config():
     config = Config()

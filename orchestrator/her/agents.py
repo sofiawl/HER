@@ -106,8 +106,18 @@ def result_info(log_path):
         "blocked": False,
         "question": None,
         "session_id": None,
+        "has_text": False,
+        "tool_uses": 0,
     }
     for event in _events(log_path):
+        if event.get("type") == "assistant":
+            info["has_text"] = info["has_text"] or bool(_message_text(event).strip())
+            content = (event.get("message") or {}).get("content")
+            info["tool_uses"] += sum(
+                1 for block in content if isinstance(block, dict) and block.get("type") == "tool_use"
+            ) if isinstance(content, list) else 0
+        if event.get("type") == "tool_call" and event.get("subtype") == "started":
+            info["tool_uses"] += 1
         if event.get("type") != "result":
             continue
         info["subtype"] = event.get("subtype")
