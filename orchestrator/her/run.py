@@ -10,7 +10,7 @@ from pathlib import Path
 from .agents import build_command, final_result, result_info, run_logged
 from .config import RUNS_DIR
 
-DONE, FAILED, RUNNING, PENDING, SKIPPED = "done", "failed", "running", "pending", "skipped"
+DONE, FAILED, RUNNING, PENDING, SKIPPED, BLOCKED = "done", "failed", "running", "pending", "skipped", "blocked"
 
 
 class Run:
@@ -123,6 +123,8 @@ def step_verdict(code, result, info):
         for name in denials:
             counts[name] = counts.get(name, 0) + 1
         return FAILED, "denied: " + ", ".join(f"{n} x{c}" for n, c in counts.items())
+    if info.get("question"):
+        return BLOCKED, "needs answer"
     if info["blocked"]:
         return FAILED, "blocked"
     return DONE, None
@@ -138,7 +140,7 @@ class Executor:
         self.cwd_locks = {}
         state = run.state().get("steps", {})
         self.status = {
-            s["id"]: (DONE if state.get(s["id"], {}).get("status") == DONE else PENDING)
+            s["id"]: state.get(s["id"], {}).get("status") if state.get(s["id"], {}).get("status") in (DONE, BLOCKED) else PENDING
             for s in self.plan["steps"]
         }
         self.started = {}
@@ -189,13 +191,27 @@ class Executor:
         code = process.wait()
         result = final_result(log_path)
         self.run.step_output(sid).write_text(result)
-        status, reason = step_verdict(code, result, result_info(log_path))
+        info = result_info(log_path)
+        status, reason = step_verdict(code, result, info)
         elapsed = int(time.time() - self.started[sid])
         with self.lock:
             self.status[sid] = status
-        self._record(sid, status=status, exit_code=code, seconds=elapsed, reason=reason)
+        blocked = status == BLOCKED
+        self._record(
+            sid, status=status, exit_code=code, seconds=elapsed, reason=reason,
+            question=info["question"] if blocked else None,
+            session_id=info["session_id"] if blocked else None,
+        )
         why = f" ({reason})" if reason else ""
         self._say(f"{status:<6} {sid} in {elapsed}s{why} -> {self.run.step_output(sid)}")
+
+    def _pick_up_answers(self):
+        if BLOCKED not in self.status.values():
+            return
+        steps = self.run.state().get("steps", {})
+        for sid, value in self.status.items():
+            if value == BLOCKED and steps.get(sid, {}).get("status") == PENDING:
+                self.status[sid] = PENDING
 
     def _status_line(self):
         counts = {}
@@ -220,6 +236,8 @@ class Executor:
         self.run.update_state(phase="executing")
         threads = []
         while True:
+            self._pick_up_answers()
+            before = dict(self.status)
             with self.lock:
                 running = sum(1 for v in self.status.values() if v == RUNNING)
             for step in self.plan["steps"]:
@@ -238,7 +256,9 @@ class Executor:
                     thread.start()
                     threads.append(thread)
                     running += 1
-            if all(v in (DONE, FAILED, SKIPPED) for v in self.status.values()):
+            with self.lock:
+                idle = RUNNING not in self.status.values() and before == self.status
+            if idle:
                 break
             if sys.stdout.isatty():
                 with self.lock:
@@ -249,7 +269,13 @@ class Executor:
             thread.join()
         if sys.stdout.isatty():
             sys.stdout.write("\r\033[K")
-        phase = "done" if all(v == DONE for v in self.status.values()) else "finished-with-failures"
+        values = self.status.values()
+        if all(v == DONE for v in values):
+            phase = "done"
+        elif BLOCKED in values:
+            phase = "needs-answer"
+        else:
+            phase = "finished-with-failures"
         self.run.update_state(phase=phase)
         self._write_summary()
         return phase
@@ -258,6 +284,13 @@ class Executor:
         lines = [f"# HER run {self.run.id}", "", self.plan["summary"], "", "## Steps", ""]
         for step in self.plan["steps"]:
             lines.append(f"- `{step['id']}` {self.status[step['id']]}: {self.run.step_output(step['id'])}")
+        steps = self.run.state().get("steps", {})
+        blocked = [sid for sid, value in self.status.items() if value == BLOCKED]
+        if blocked:
+            lines += ["", "## Open questions", ""]
+            for sid in blocked:
+                lines.append(f"- `{sid}`: {steps.get(sid, {}).get('question')}")
+                lines.append(f'  answer with: her answer {sid} "..."')
         missing = self.plan.get("missing_skills", [])
         if missing:
             lines += ["", "## Skills HER is missing", ""]

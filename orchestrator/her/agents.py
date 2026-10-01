@@ -1,6 +1,8 @@
 import json
 import subprocess
 
+QUESTION_PREFIX = "QUESTION:"
+
 
 def claude_command(config, prompt, model, add_dirs, writes, extra=()):
     args = [config.claude_bin, "-p", prompt, "--model", model]
@@ -75,6 +77,23 @@ def final_result(log_path):
     return texts[-1] if texts else ""
 
 
+def question_text(result):
+    question = None
+    for line in result.splitlines():
+        line = line.strip()
+        if line.startswith(QUESTION_PREFIX):
+            question = line[len(QUESTION_PREFIX):].strip() or None
+    return question
+
+
+def session_id(log_path):
+    found = None
+    for event in _events(log_path):
+        if event.get("type") in ("system", "result") and event.get("session_id"):
+            found = event["session_id"]
+    return found
+
+
 def result_info(log_path):
     info = {
         "subtype": None,
@@ -84,6 +103,8 @@ def result_info(log_path):
         "cost": None,
         "models": [],
         "blocked": False,
+        "question": None,
+        "session_id": None,
     }
     for event in _events(log_path):
         if event.get("type") != "result":
@@ -99,9 +120,10 @@ def result_info(log_path):
         info["cost"] = float(cost) if isinstance(cost, (int, float)) else None
         usage_by_model = event.get("modelUsage")
         info["models"] = list(usage_by_model) if isinstance(usage_by_model, dict) else []
-    info["blocked"] = any(
-        line.startswith("BLOCKED") for line in final_result(log_path).splitlines()
-    )
+    result = final_result(log_path)
+    info["blocked"] = any(line.startswith("BLOCKED") for line in result.splitlines())
+    info["question"] = question_text(result)
+    info["session_id"] = session_id(log_path)
     return info
 
 
