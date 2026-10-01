@@ -30,6 +30,22 @@ DEFAULT_MODELS = {
     },
 }
 
+CLAUDE_READ_TOOLS = [
+    "Read", "Grep", "Glob", "WebFetch", "WebSearch",
+    "Bash(git *)", "Bash(gh pr view *)", "Bash(gh pr list *)",
+    "Bash(ls *)", "Bash(cat *)", "Bash(head *)", "Bash(tail *)", "Bash(wc *)",
+    "Bash(find *)", "Bash(grep *)", "Bash(rg *)",
+    "Bash(python3 *)", "Bash(python *)", "Bash(node *)",
+    "Bash(npm *)", "Bash(npx *)", "Bash(yarn *)", "Bash(pnpm *)",
+    "Bash(pytest *)", "Bash(her *)",
+]
+
+CLAUDE_WRITE_TOOLS = CLAUDE_READ_TOOLS + [
+    "Edit", "Write", "NotebookEdit",
+    "Bash(gh pr create *)", "Bash(gh pr edit *)", "Bash(gh api *)",
+    "Bash(mkdir *)", "Bash(mv *)", "Bash(cp *)",
+]
+
 INTERACTIVE_SKILLS = {
     "ask-her",
     "grilling",
@@ -54,6 +70,8 @@ class Config:
     claude_read_args: list = field(
         default_factory=lambda: ["--disallowedTools", "Edit", "Write", "NotebookEdit"]
     )
+    claude_read_tools: list = field(default_factory=lambda: list(CLAUDE_READ_TOOLS))
+    claude_write_tools: list = field(default_factory=lambda: list(CLAUDE_WRITE_TOOLS))
     cursor_write_args: list = field(default_factory=lambda: ["--force", "--trust"])
     cursor_read_args: list = field(default_factory=lambda: ["--mode", "ask", "--trust"])
 

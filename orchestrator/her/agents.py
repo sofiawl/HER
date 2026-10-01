@@ -6,6 +6,9 @@ def claude_command(config, prompt, model, add_dirs, writes, extra=()):
     args = [config.claude_bin, "-p", prompt, "--model", model]
     args += ["--output-format", "stream-json", "--verbose"]
     args += config.claude_write_args if writes else config.claude_read_args
+    tools = config.claude_write_tools if writes else config.claude_read_tools
+    if tools:
+        args += ["--allowedTools", ",".join(tools)]
     for directory in add_dirs:
         args += ["--add-dir", directory]
     return args + list(extra)
