@@ -57,6 +57,11 @@ Cutting any of these is a bug, not laziness.
 
 Non-trivial logic (branch, loop, parser, math, money, date, security path) gets one runnable check: a focused test in the existing test setup, or an assert-based script if none exists. Trivial one-liners and glue: no test needed. Run the check before replying. Paste the command and result.
 
+## Commit and self-check
+
+- Commit along the way: one conventional commit per logical change, following HER rule 9, on the current branch. Run by the HER orchestrator: never create or switch branches, never push.
+- Before finishing, run the repo's tests and the lint/type checks CI runs (read CI config, Makefile, package scripts). Fix failures you caused. Cannot fix: end the reply with `BLOCKED: <why>`.
+
 ## Output
 
 Code first. Then at most 3 lines:

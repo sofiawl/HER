@@ -25,26 +25,7 @@ main <- feat/<ID>_<slug>            feat: the umbrella, bottom of the stack
 - **sub**: one PR, at most 750 changed lines, independently testable, tests included. Sub 1 targets the proposal, each next sub targets the previous one. Merged in order.
 - **single**: a PR outside any stack (bug fix, small refactor). Same 750 limit.
 
-Branch names: `<type>/<CARD>_<short_name>`, words joined with `_`, never `-` (e.g. `fix/ML-88_static_repetition_score`, `feat/DES2-213_nAIosh`, `proposal/DES2-238_nAIosh_on_demand`). The only hyphen is the one inside the card ID. Sub pattern not seen in the repo yet: ask Sofia once.
-
-Commit messages follow Conventional Commits (https://www.conventionalcommits.org):
-
-```
-<type>[optional scope]: <description>
-
-[optional body]
-
-[optional footer(s)]
-```
-
-- `fix:` patches a bug (SemVer PATCH). `feat:` adds a feature (SemVer MINOR).
-- Other types from `@commitlint/config-conventional`: `build:`, `chore:`, `ci:`, `docs:`, `style:`, `refactor:`, `perf:`, `test:`.
-- Description in lowercase imperative, no trailing period (e.g. `fix: static posture alone scores +1 in REBA/RULA repetition`, `test: pin static-only repetition score in REBA suite`).
-- Never put the card ID in a commit message: no `(ML-88)` suffix, not in the subject, body or footer. The card lives in the branch name and the PR body only.
-- Breaking change: `!` after the type (`feat!:`) or a `BREAKING CHANGE:` footer.
-- One commit, one type. A fix plus its tests is `fix:`. A later commit that only adds tests is `test:`.
-
-Ticket URLs: every card link in a PR body uses `https://loop.zslippy.com/issue/<CARD>` (e.g. `https://loop.zslippy.com/issue/ML-88`). Never a bare ID, never another tracker domain.
+Branch names, commit messages and ticket URLs: HER rule 9.
 
 `.scratch/` is ignored globally (`~/.config/git/ignore`), so plans and PR description drafts live there and are never committed.
 
@@ -82,6 +63,10 @@ Title: see TEMPLATE.md Titles. Defaults: `feat: <ID> - <summary>`, `proposal: <I
 ## update
 
 Stack changed (a sub merged, re-cut, canceled, or a new one added): refresh the proposal's merge-order table with real sizes from `gh pr view <n> --json additions,deletions,changedFiles`, move dead PRs to the graveyard with one line on why they died and which PR replaced them, and fix the "Stacked on top of" line in any sub whose base changed. Show the diff of the description, update on GitHub only after her yes (`gh pr edit <n> --body-file <file>`).
+
+## Headless
+
+Prompt says it runs headless under the HER orchestrator: never ask or quiz Sofia (skip the plan quiz, the card confirmation and the open-PR yes). Take decisions from the `decisions.md` path in the prompt. Opening or editing a PR needs a decision there or the task saying so, else only save the draft. Card ID, base branch or granularity missing and not in the branch or decisions: end with `BLOCKED: needs Sofia: <decision>`.
 
 ## Hand off
 

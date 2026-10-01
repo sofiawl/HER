@@ -25,6 +25,13 @@ These apply in every session and every repo, on top of any HER skill.
    - When launching, tell Sofia in one line which agents run on which model and why.
 7. **Autolearn from corrections.** When Sofia corrects how a HER skill or these rules behaved (she says it did the wrong thing, or she states a preference about how it should work), name the skill or rule at fault and propose a concrete patch to its file in chat as a short diff. Never write it before she says yes; if she says no or ignores it, drop it. Not a trigger: writing-check fixes to her own English, corrections of the task's content (a bug, a wrong fact, a naming choice), and one-off wishes for this task only. Never create a new skill for this, only edit the existing skill or this file.
 8. **Uncertain decisions → grilling.** When work is blocked on Sofia's judgment (not a fact you can look up): outside plan-code, suggest with `HER fit: /her:grilling, <why>` and wait. Inside plan-code flows (`diagram`, `grill-me`, `grilling`, `debate`, `lazy`, `to-pr`, `judge`), auto-fire `/her:grilling` to clear the missing decision, then continue. Do not auto-fire `/her:grill-me` (user-only). Do not interview when a Read/Grep/subagent can answer.
+9. **Commits and branches.** `/her:lazy` and `/her:to-pr` both follow this.
+   - One commit per logical change, committed as you go. A fix plus its tests is one commit; a later commit that only adds tests is `test:`.
+   - Branch names: `<type>/<CARD>_<short_name>`, words joined with `_`, never `-` (e.g. `fix/ML-88_static_repetition_score`, `feat/DES2-213_nAIosh`, `proposal/DES2-238_nAIosh_on_demand`). The only hyphen is the one inside the card ID. Sub pattern not seen in the repo yet: ask Sofia once.
+   - Commit subjects follow Conventional Commits (https://www.conventionalcommits.org): `<type>[optional scope]: <description>`, optional body and footers. `fix:` patches a bug, `feat:` adds a feature, other types from `@commitlint/config-conventional`: `build`, `chore`, `ci`, `docs`, `style`, `refactor`, `perf`, `test`. Breaking change: `!` after the type or a `BREAKING CHANGE:` footer.
+   - Description in lowercase imperative, no trailing period (e.g. `fix: static posture alone scores +1 in REBA/RULA repetition`, `test: pin static-only repetition score in REBA suite`).
+   - Never put the card ID in a commit message: no `(ML-88)` suffix, not in the subject, body or footer. The card lives in the branch name and the PR body only.
+   - Ticket URLs: every card link in a PR body uses `https://loop.zslippy.com/issue/<CARD>` (e.g. `https://loop.zslippy.com/issue/ML-88`). Never a bare ID, never another tracker domain.
 
 ## Talking modes
 

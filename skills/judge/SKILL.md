@@ -72,6 +72,12 @@ Evidence: <commands run, exit codes>
 
 Coverage under 80%: FAIL for new code, WARN if it only fails to raise a legacy low baseline.
 
+## Headless
+
+Prompt says it runs headless under the HER orchestrator: never ask Sofia (no AskUserQuestion, no quiz). Take metric choices from the `decisions.md` path in the prompt. A needed decision missing: end with `BLOCKED: needs Sofia: <decision>`.
+
+Write the verdict JSON to the path given in the prompt: `{"verdict": "ship|fix|needs-discussion", "why": "<one sentence>", "table": "<metrics table as markdown>"}`. Can't run commands: write verdict `needs-discussion`, why saying so, and end with `BLOCKED: cannot run commands`.
+
 ## Next
 
 Verdict ship: suggest `/her:to-pr`, and pass the table to it. Otherwise: list fixes, suggest `/her:lazy` for them, rerun judge.
