@@ -13,7 +13,7 @@ from . import config as config_module
 from . import plan as planner
 from .agents import pretty_lines
 from .config import RUNS_DIR, load_config
-from .run import DONE, FAILED, SKIPPED, Executor, Run
+from .run import BLOCKED, DONE, FAILED, PENDING, SKIPPED, Executor, Run
 
 RECENT_RUNS = 5
 USAGE = """commands:
@@ -22,6 +22,7 @@ USAGE = """commands:
   her check <run>            validate plan.json and show the plan
   her start <run>            run the pipeline detached, open the dashboard
   her watch [run]            live dashboard
+  her answer <step> <text> [run]  answer a BLOCKED step and resume it
   her stop <run>             stop a running pipeline
   her runs                   list all runs
   her status [run]           plan steps with state
@@ -190,6 +191,12 @@ def open_dashboard(run):
     return False
 
 
+def launch_executor(run):
+    process = spawn_detached([sys.executable, "-u", "-m", "her", "exec", run.id], run.path / "executor.log")
+    run.update_state(approved=True, phase="approved", executor_pid=process.pid)
+    return process
+
+
 def command_start(args):
     config = load_config()
     run = Run.find(args.run)
@@ -198,8 +205,7 @@ def command_start(args):
         return 1
     if not check_run(config, run):
         return 1
-    process = spawn_detached([sys.executable, "-u", "-m", "her", "exec", run.id], run.path / "executor.log")
-    run.update_state(approved=True, phase="approved", executor_pid=process.pid)
+    process = launch_executor(run)
     print(f"run {run.id} started (pid {process.pid})")
     if not args.no_window and open_dashboard(run):
         print("dashboard opened in a new window")
@@ -215,6 +221,25 @@ def command_exec(args):
     finally:
         run.update_state(executor_pid=None)
     return 0 if phase == "done" else 1
+
+
+def command_answer(args):
+    run = Run.find(args.run)
+    state = run.state()
+    info = state.get("steps", {}).get(args.step, {})
+    if info.get("status") != BLOCKED:
+        print(f"step {args.step} is not blocked in {run.id} (state: {info.get('status', 'pending')})")
+        return 1
+    run.add_decision(info.get("question"), args.text)
+    state["steps"][args.step].update(status=PENDING, answer=args.text, reason=None)
+    run.save_state(state)
+    if pid_alive(state.get("executor_pid")):
+        print(f"step {args.step} answered, the running executor will resume it")
+    else:
+        launch_executor(run)
+        print(f"step {args.step} answered, executor started")
+    print(f"watch with: her watch {run.id}")
+    return 0
 
 
 def command_watch(args):
@@ -309,7 +334,7 @@ def command_logs(args):
     log_path = run.step_log(args.step)
     printed = 0
     while True:
-        finished = step_status(run, args.step) in (DONE, FAILED, SKIPPED)
+        finished = step_status(run, args.step) in (DONE, FAILED, SKIPPED, BLOCKED)
         lines = list(pretty_lines(log_path)) if log_path.exists() else []
         for line in lines[printed:]:
             print(line)
@@ -346,6 +371,7 @@ def build_parser():
     add("check", command_check, (("run",), {}))
     add("start", command_start, (("run",), {}), (("--no-window",), {"action": "store_true"}))
     add("exec", command_exec, (("run",), {}))
+    add("answer", command_answer, (("step",), {}), (("text",), {}), (("run",), optional))
     add("watch", command_watch, (("run",), optional))
     add("stop", command_stop, (("run",), {}))
     add("runs", command_runs)

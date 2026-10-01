@@ -56,6 +56,10 @@ class Run:
     def decisions(self):
         return self.read("decisions.md")
 
+    def add_decision(self, question, answer):
+        text = self.decisions().rstrip("\n")
+        self.write("decisions.md", (text + "\n\n" if text else "") + f"Q: {question}\nA: {answer}\n")
+
     def plan(self):
         return json.loads(self.read("plan.json", "null"))
 
