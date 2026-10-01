@@ -1,0 +1,11 @@
+{
+  "name": "her",
+  "owner": { "name": "Sofia Lima" },
+  "plugins": [
+    {
+      "name": "her",
+      "source": "./",
+      "description": "HER: Sofia's personal skill set for learning, research, planning and producing code."
+    }
+  ]
+}
