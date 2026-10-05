@@ -1,1 +1,3 @@
 throwaway/
+__pycache__/
+*.pyc
