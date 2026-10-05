@@ -84,6 +84,15 @@ class StepVerdictTest(unittest.TestCase):
         self.assertEqual(step_verdict(0, "x", {**base, "blocked": True})[0], FAILED)
         self.assertEqual(step_verdict(0, "x", base), (DONE, None))
 
+    def test_denials_with_a_commit_are_done(self):
+        base = {"subtype": None, "is_error": False, "permission_denials": ["Edit", "Bash"], "blocked": False}
+        self.assertEqual(step_verdict(0, "x", base, committed=True), (DONE, None))
+        self.assertEqual(step_verdict(0, "x", base, committed=False)[0], FAILED)
+
+    def test_denials_with_a_commit_still_fail_on_error(self):
+        base = {"subtype": None, "is_error": True, "permission_denials": ["Edit"], "blocked": False}
+        self.assertEqual(step_verdict(0, "x", base, committed=True), (FAILED, "is_error"))
+
 
 class AllowedToolsTest(unittest.TestCase):
     def flag_value(self, writes, config=None):
@@ -112,3 +121,38 @@ class AllowedToolsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StepCrashTest(unittest.TestCase):
+    def test_crashing_step_fails_instead_of_hanging(self):
+        import threading
+        from unittest import mock
+
+        from her.run import FAILED, Executor
+
+        executor = Executor.__new__(Executor)
+        executor.lock = threading.RLock()
+        executor.wake = threading.Event()
+        executor.status = {"a": "RUNNING"}
+        recorded = {}
+        executor._record = lambda sid, **fields: recorded.update({sid: fields})
+        executor._say = lambda text: None
+        with mock.patch.object(Executor, "_execute_step", side_effect=RuntimeError("boom")):
+            executor._execute({"id": "a"})
+        self.assertEqual(executor.status["a"], FAILED)
+        self.assertIn("boom", recorded["a"]["reason"])
+        self.assertTrue(executor.wake.is_set())
+
+
+class AtomicWriteTest(unittest.TestCase):
+    def test_write_leaves_no_temporary_file(self):
+        import tempfile
+        from pathlib import Path
+
+        from her.run import Run
+
+        with tempfile.TemporaryDirectory() as directory:
+            run = Run(Path(directory))
+            run.save_state({"phase": "x"})
+            self.assertEqual(run.state(), {"phase": "x"})
+            self.assertEqual([p.name for p in Path(directory).iterdir()], ["state.json"])

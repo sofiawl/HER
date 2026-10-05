@@ -154,3 +154,17 @@ class PreflightTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BranchPatternTest(unittest.TestCase):
+    def test_rule_examples_are_accepted(self):
+        from her.plan import BRANCH_PATTERN
+
+        for branch in ("fix/ML-88_static_repetition_score", "feat/DES2-213_nAIosh", "proposal/DES2-238_nAIosh_on_demand"):
+            self.assertTrue(BRANCH_PATTERN.fullmatch(branch), branch)
+
+    def test_hyphenated_words_are_rejected(self):
+        from her.plan import BRANCH_PATTERN
+
+        for branch in ("feat/ML-88_short-words", "feat/ML-88", "feature/ML-88_x"):
+            self.assertFalse(BRANCH_PATTERN.fullmatch(branch), branch)

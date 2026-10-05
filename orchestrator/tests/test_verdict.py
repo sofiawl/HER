@@ -27,6 +27,16 @@ class VerdictGateTest(unittest.TestCase):
             self.assertTrue(run.verdict_path("judge").is_absolute())
             self.assertIn("ship, fix, needs-discussion", prompt)
 
+    def test_every_prompt_starts_with_headless_decisions_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            run = judge_pipeline(directory)
+            for planned in run.plan()["steps"]:
+                prompt = step_prompt(run, run.plan(), planned)
+                self.assertEqual(
+                    prompt.splitlines()[0],
+                    f"HER headless run. Decisions: {run.path}/decisions.md",
+                )
+
     def test_missing_verdict_skips_to_pr_and_writes_summary(self):
         with tempfile.TemporaryDirectory() as directory:
             run = judge_pipeline(directory)

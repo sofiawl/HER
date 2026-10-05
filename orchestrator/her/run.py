@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import signal
 import sys
@@ -48,7 +49,10 @@ class Run:
         return file.read_text() if file.exists() else default
 
     def write(self, name, text):
-        (self.path / name).write_text(text)
+        target = self.path / name
+        temporary = target.with_name(f".{target.name}.{os.getpid()}.{threading.get_ident()}.tmp")
+        temporary.write_text(text)
+        os.replace(temporary, target)
 
     def request(self):
         return self.read("request.md")
@@ -150,7 +154,12 @@ def resume_prompt(step, answer):
     return "\n".join([f"Sofia's answer: {answer}", "", "Continue your task with this answer."] + [""] + step_rules(step))
 
 
-def step_verdict(code, result, info):
+def head_commit(cwd):
+    found = git(cwd, "rev-parse", "--verify", "--quiet", "HEAD")
+    return found.stdout.strip() if found.returncode == 0 else None
+
+
+def step_verdict(code, result, info, committed=False):
     if code != 0:
         return FAILED, f"exit code {code}"
     if not result.strip():
@@ -160,7 +169,7 @@ def step_verdict(code, result, info):
     if info["is_error"]:
         return FAILED, "is_error"
     denials = info["permission_denials"]
-    if denials:
+    if denials and not committed:
         counts = {}
         for name in denials:
             counts[name] = counts.get(name, 0) + 1
@@ -294,6 +303,15 @@ class Executor:
     def _execute(self, step):
         try:
             self._execute_step(step)
+        except Exception as error:
+            sid = step["id"]
+            reason = f"orchestrator error: {type(error).__name__}: {error}"
+            with self.lock:
+                self.status[sid] = FAILED
+            try:
+                self._record(sid, status=FAILED, reason=reason)
+            finally:
+                self._say(f"{FAILED:<6} {sid}: {reason}")
         finally:
             self.wake.set()
 
@@ -329,12 +347,15 @@ class Executor:
                 prompt = step_prompt(self.run, self.plan, current, earlier)
             command = build_command(self.config, agent, prompt, model, step["cwd"], add_dirs, writes, resume)
             began = time.time()
+            head_before = head_commit(step["cwd"])
             process = run_logged(command, step["cwd"], log_path, append=resume is not None)
             self.processes[sid] = process
             code = process.wait()
             result = final_result(log_path)
             info = result_info(log_path)
-            status, reason = step_verdict(code, result, info)
+            head_after = head_commit(step["cwd"])
+            committed = head_after is not None and head_after != head_before
+            status, reason = step_verdict(code, result, info, committed)
             seconds = int(time.time() - began)
             if info["tokens"] is not None:
                 has_tokens = True

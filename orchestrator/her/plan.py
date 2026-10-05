@@ -9,7 +9,7 @@ from .config import TIERS
 from .skills import catalog, catalog_text
 
 BRANCH_PATTERN = re.compile(
-    r"(feat|fix|proposal|chore|refactor|docs|test)/([A-Z][A-Z0-9]*-[0-9]+|[a-z0-9]+)(_[a-z0-9]+)+"
+    r"(feat|fix|proposal|chore|refactor|docs|test)/([A-Z][A-Z0-9]*-[0-9]+|[a-z0-9]+)(_[A-Za-z0-9]+)+"
 )
 
 PER_REPO_SKILLS = ("judge", "to-pr")
