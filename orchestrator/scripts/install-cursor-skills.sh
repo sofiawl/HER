@@ -1,11 +1,15 @@
 #!/bin/bash
 set -euo pipefail
 
-HER_SKILLS_DIR="/home/sofia/HER/skills"
+HER_REPO="$(cd "$(dirname "$0")/../.." && pwd)"
+HER_SKILLS_DIR="$HER_REPO/skills"
 CURSOR_SKILLS_DIR="${HOME}/.cursor/skills"
-HER_AGENTS_DIR="/home/sofia/HER/orchestrator/cursor-agents"
+HER_AGENTS_DIR="$HER_REPO/orchestrator/cursor-agents"
 CURSOR_AGENTS_DIR="${HOME}/.cursor/agents"
+CURSOR_RULES_DIR="${HOME}/.cursor/rules"
+HER_RULES_MDC="$CURSOR_RULES_DIR/her.mdc"
 LINK_MARKER=".her-installed"
+RULES_MARKER="# HER: installed by install-cursor-skills.sh"
 
 if [[ "${1:-}" == "--uninstall" ]]; then
   for agent_file in "$HER_AGENTS_DIR"/*.md; do
@@ -27,6 +31,10 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 
   if [[ -f "$CURSOR_SKILLS_DIR/$LINK_MARKER" ]]; then
     rm "$CURSOR_SKILLS_DIR/$LINK_MARKER"
+  fi
+
+  if [[ -f "$HER_RULES_MDC" ]] && grep -qF "$RULES_MARKER" "$HER_RULES_MDC" 2>/dev/null; then
+    rm "$HER_RULES_MDC"
   fi
 
   exit 0
@@ -63,3 +71,13 @@ mkdir -p "$CURSOR_AGENTS_DIR"
 for agent_file in "$HER_AGENTS_DIR"/*.md; do
   ln -sfn "$agent_file" "$CURSOR_AGENTS_DIR/$(basename "$agent_file")"
 done
+
+mkdir -p "$CURSOR_RULES_DIR"
+{
+  echo "---"
+  echo "description: HER always-on rules"
+  echo "alwaysApply: true"
+  echo "---"
+  echo "$RULES_MARKER"
+  cat "$HER_REPO/rules/RULES.md"
+} > "$HER_RULES_MDC"

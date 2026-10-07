@@ -1,6 +1,6 @@
 {
   "name": "her",
   "version": "0.5.0",
-  "description": "HER: Sofia's personal skill set for learning, research, planning and producing code.",
+  "description": "HER: Sofia's harness-agnostic skill set and rules for learning, research, planning and producing code (Claude Code plugin packaging).",
   "author": { "name": "Sofia Lima" }
 }

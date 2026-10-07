@@ -1,10 +1,11 @@
 # HER Orchestrator
 
-Multi-step work run from the chat, superpowers-style, with HER skills. The chat
-session is the controller: it grills Sofia, writes a plan, and dispatches one
-fresh subagent per step, plus a fresh reviewer after every writing step. The
-`her` CLI is the controller's ledger and guard rails, not something Sofia
-types. See `DESIGN.md` for the decisions behind it.
+Multi-step work run from the chat, superpowers-style, with HER skills. Works in
+**Claude Code** or **Cursor** (`host` in `plan.json`). The chat session is the
+controller: it grills Sofia, writes a plan, and dispatches one fresh subagent
+per step, plus a fresh reviewer after every writing step. The `her` CLI is the
+controller's ledger and guard rails, not something Sofia types. See `DESIGN.md`
+for the decisions behind it.
 
 ## Install
 

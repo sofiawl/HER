@@ -8,13 +8,23 @@ These apply in every session and every repo, on top of any HER skill.
 4. **Professor and helper at once.** Sofia wants to learn everything without slowing production by doing it all by hand. Do the work, and while doing it explain the key decision in one or two sentences (the why, not the what). When something deserves deeper study, offer `/her:teach` instead of lecturing mid-task.
 5. **Nudge toward HER skills.** Sofia is building the habit of using them. When a request fits a HER skill she did not call, open the reply with one line `HER fit: /her:<name>, <why>.` and follow `/her:ask-her` (run it if it only reads or plans, ask first if it writes, installs or opens anything). Once per task, silent when a HER skill is already running.
 
-6. **Delegate to the right model.** Hand a chore to a subagent when it is independent, reading-heavy or can run in parallel. Keep in the main session what needs the conversation: Sofia's answers, her decisions, the final reply. Each HER skill has a `## Subagents` section naming the model per chore; outside a skill, use this table. Skills name the HER tier; pick a Cursor slug from the mapping (or another listed Cursor model that fits cost and chore):
+6. **Delegate to the right model.** Hand a chore to a subagent when it is independent, reading-heavy or can run in parallel. Keep in the main session what needs the conversation: Sofia's answers, her decisions, the final reply. Each HER skill has a `## Subagents` section naming the model per chore; outside a skill, use the tier table below. HER skills name a **tier** (`haiku`, `sonnet`, `opus`), not a vendor: map the tier to whatever model ID your harness exposes. Orchestrator plans set `host` (`claude` or `cursor`) and concrete models from `her config` / `~/.her/config.toml`.
 
-| HER tier | Cursor `model` slug (pick one) | Use for |
-|---|---|---|
-| Haiku (`haiku`) | `composer-2.5-fast`, `gemini-3.8-flash-high`, `grok-4.7-high-fast`, `cursor-grok-4.6-high-fast` | Mechanical, zero decision: inventory, grep, versions, installs, copy, known commands, table/record updates |
-| Sonnet (`sonnet`) | `claude-sonnet-5-5-high`, `gpt-5.6-sol-medium` | Moderate judgment: explore code, run builds/tests and interpret failures, read sources, collect evidence, routine implementation |
-| Opus (`opus`) | `claude-opus-5-thinking-high`, `claude-opus-5-5-medium` | Deep work and final say: multi-file design, long writing in Sofia's voice, synthesis across many sources, risky decisions, final diff review, verdicts, opening PRs |
+| HER tier | Use for |
+|---|---|
+| Haiku (`haiku`) | Mechanical, zero decision: inventory, grep, versions, installs, copy, known commands, table/record updates |
+| Sonnet (`sonnet`) | Moderate judgment: explore code, run builds/tests and interpret failures, read sources, collect evidence, routine implementation |
+| Opus (`opus`) | Deep work and final say: multi-file design, long writing in Sofia's voice, synthesis across many sources, risky decisions, final diff review, verdicts, opening PRs |
+
+**Claude Code:** pass the tier name to the Agent tool (`haiku`, `sonnet`, `opus`).
+
+**Cursor:** pass a `model` slug from this mapping (or another model on the account that fits the tier and chore):
+
+| HER tier | Cursor `model` slug (pick one) |
+|---|---|
+| Haiku (`haiku`) | `composer-2.5-fast`, `gemini-3.8-flash-high`, `grok-4.7-high-fast`, `cursor-grok-4.6-high-fast` |
+| Sonnet (`sonnet`) | `claude-sonnet-5-5-high`, `gpt-5.6-sol-medium` |
+| Opus (`opus`) | `claude-opus-5-thinking-high`, `claude-opus-5-5-medium` |
 
    - Prefer the cheapest slug in the tier that can do the chore. If it fails or comes back thin, go up one HER tier (or a stronger slug in-tier); do not retry the same slug blindly.
    - Independent chores go out in one message, in parallel. Never run timing benchmarks in parallel, they skew each other.
