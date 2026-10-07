@@ -1,79 +1,97 @@
 ---
 name: research
 description: >
-  Investigate a question against high-trust primary sources (official docs,
-  specs, source code, papers, maintainers) and write a cited, ranked-by-trust
-  Markdown note with a confidence line and a plain "what this means for you"
-  section. Use when Sofia wants a topic researched, API or spec facts checked
-  against the source that owns them, or reading legwork handed to a
-  background agent. Triggers: "research this", "look into", "what does the
-  spec actually say", "check the docs for", "find a primary source on",
-  "is this actually true", "cite your sources".
-argument-hint: "<question to research>"
+  One skill, three modes: cited primary-source research (default), optional
+  last-30-days discourse when the plugin is installed, or a throwaway spike
+  when only code can answer the question. Triggers: "research this", "look
+  into", "what does the spec say", "cite your sources", "what's the vibe on",
+  "last 30 days", "prototype this", "spike this", "sanity check this logic".
+argument-hint: "<question> [mode: sources | discourse | spike]"
 ---
 
 Mode: professor.
 
-## 1. Spin up a background agent
+Pick the mode from Sofia's words. Default is **sources**. If unclear, ask
+once: primary sources, recent chatter, or a throwaway spike?
 
-Investigate in the background so Sofia keeps working while it reads. Give the
-agent the question and the source-trust and citation rules below verbatim.
+| Mode | When |
+|---|---|
+| **sources** | Facts, specs, docs, code, papers, "is this true" |
+| **discourse** | Recent public chatter, hype vs signal (needs last30days plugin) |
+| **spike** | One design question only running code can settle |
 
-## 2. Rank sources by trust, explicitly
+---
 
-- Tier 1, trust by default: official docs, specs and RFCs, the actual source
-  code, first-party API references, direct maintainer statements.
-- Tier 2, trust but verify against Tier 1 when one exists: papers, changelogs,
-  release notes, write-ups from named practitioners with a track record.
-- Tier 3, use only to find leads, never as the final word: blog posts,
-  Stack Overflow answers, forum threads, secondary tutorials.
-- Tier 4, colour only, never cite as fact: social media takes, marketing copy.
+## Mode: sources
 
-Chase every claim up to the highest tier that actually addresses it. Note the
-tier next to each source in the note so Sofia can tell at a glance how solid
-a claim is.
+Investigate against high-trust primary sources. Spin up background reading so
+Sofia keeps working.
 
-## 3. Every claim gets a citation
+### Source tiers
 
-No sentence in the findings states a fact without a link (or a `path:line`
-for source code) right next to it, pointing at the source that owns that
-fact, not a secondary write-up of it.
+- Tier 1: official docs, specs, RFCs, source code, first-party APIs, maintainers.
+- Tier 2: papers, changelogs, named practitioners (verify against Tier 1 when possible).
+- Tier 3: leads only, never final word: blogs, SO, forums.
+- Tier 4: colour only: social takes, marketing.
 
-## 4. Call out conflicts, do not average them away
+Chase claims to the highest tier that owns them. Note tier beside each source.
 
-When two trustworthy sources disagree, say so plainly: name both, quote what
-each one claims, and say which one wins and why (tier, recency, specificity),
-or say the conflict is unresolved if it genuinely is.
+### Citations and conflicts
 
-## 5. Write the note
+Every fact: inline link or `path:line`. When sources disagree, name both, say
+which wins and why, or say unresolved.
 
-Structure, in this order:
+### Note shape
 
-1. **Confidence**: one line, high, medium or low, plus the one-clause reason
-   (source tier, agreement across sources, how current the sources are).
-2. **Findings**: the actual answer, organized by sub-question, each claim
-   cited inline.
-3. **Conflicts**: only if any showed up, per rule 4.
-4. **What this means for you**: two to four sentences translating the
-   findings into the concrete implication for Sofia's actual question, not a
-   restatement of the findings.
-5. **Further reading**: sources worth a look that were not central enough to
-   cite inline.
+1. **Confidence**: high / medium / low + one clause why.
+2. **Findings**: by sub-question, cited.
+3. **Conflicts**: if any.
+4. **What this means for you**: 2-4 sentences for Sofia's actual question.
+5. **Further reading**: optional.
 
-## 6. Save it in the right place
+Save: `docs/research/<yyyy-mm-dd>-<slug>.md` in a repo, else
+`~/ObsidianPipa/+/<Title>.md` with `map: [[Research Map]]` and `tags: [research]`.
 
-Inside a git repo: `docs/research/<yyyy-mm-dd>-<slug>.md`. Outside one: the
-Obsidian vault at `~/ObsidianPipa/+/<Title>.md`, with frontmatter
+---
 
-```
-map:
-  - "[[Research Map]]"
-tags:
-  - research
+## Mode: discourse
+
+Never reimplement scraping. Requires the last30days plugin.
+
+Check `/last30days:last30days` or `claude plugin list` for `last30days-skill`.
+If missing, give install and stop:
+
+```bash
+claude plugin marketplace add mvanhorn/last30days-skill
+claude plugin install last30days@last30days-skill
 ```
 
-plus whatever extra tags fit the topic. If it is unclear which applies, ask
-before writing.
+Delegate the topic to `/last30days:last30days`. Then read the digest back:
+
+1. Signal vs hype (same claim on several platforms vs one viral post).
+2. What proof would settle each claim; does the digest have it or only reaction?
+3. Flag claims that still need **sources** mode.
+4. Close with "worth acting on" vs "noise" in 1-2 sentences.
+
+Save the professor digest like sources mode (not the plugin's raw autosave in
+`~/Documents/Last30Days` unless Sofia asks).
+
+---
+
+## Mode: spike
+
+Throwaway code for **one** question. Write the question as one sentence at the
+top of the artifact before coding.
+
+- Logic / state / data shape → `LOGIC.md`
+- Look and layout → `UI.md`
+
+Minimum build: no tests, no extra abstraction, HER rule 2 (no comments).
+Show state after every action or variant switch. Deliverable is the answer in
+1-2 sentences, then fold validated bits into real code or the ticket, delete
+or branch the shell, never merge throwaway to main.
+
+---
 
 ## Subagents
 
@@ -81,7 +99,8 @@ Model tiers and delegation rules: HER rule 6.
 
 | Chore | Model | How |
 |---|---|---|
-| Read sources and extract claims with citations | `sonnet` | One agent per source kind (docs, source code, papers, maintainers), in parallel |
-| Check every cited URL resolves and the quote is in it | `haiku` | Before saving |
-| Write the note when sources conflict or are many | `opus` | Gets all findings |
-| Write the note otherwise | main | |
+| Read sources (sources mode) | `sonnet` | Parallel by source kind |
+| Verify cited URLs | `haiku` | Before save |
+| Run last30days | `sonnet` | Background (discourse) |
+| Build spike | `sonnet` | logic or UI variants |
+| Heavy synthesis | `opus` | many conflicts or sources |

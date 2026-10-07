@@ -6,7 +6,7 @@ shape, the kind of thing that looks fine on paper and only feels wrong once
 real cases hit it. Because it needs nothing installed, hand it to anyone,
 not only a developer, and let them feel the model for themselves.
 
-If the real question is "what should this look like", stop, that is `UI.md`.
+If the real question is "what should this look like", stop, see research/UI.md.
 
 ## 1. State the question
 
@@ -55,7 +55,7 @@ buttons.
 
 Send the file or open it. The useful moments are "wait, that should not be
 possible" or "huh, I expected X" since those are bugs in the idea, which is
-the point. Once satisfied, follow step 5 of `SKILL.md`: the validated
+the point. Once satisfied, follow research spike mode (SKILL.md): the validated
 reducer or machine lifts into the real module, the HTML shell either gets
 deleted or rides along to a throwaway branch.
 

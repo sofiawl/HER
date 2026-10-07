@@ -76,7 +76,7 @@ Then offer to save it:
 - inside a repo: `docs/decisions/NNNN-<slug>.md`, with NNNN one higher than the highest existing record (start at 0001),
 - otherwise: a note in `~/ObsidianPipa/+/`.
 
-If the decision has structure worth showing, offer `/her:diagram`.
+If the decision needs a small diagram, add a Mermaid block in the decision record.
 
 ## Subagents
 

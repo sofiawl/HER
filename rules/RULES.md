@@ -33,7 +33,7 @@ These apply in every session and every repo, on top of any HER skill.
    - Skip delegation for chores of about 3 tool calls or fewer; do them inline.
    - When launching, tell Sofia in one line which agents run on which model and why.
 7. **Autolearn from corrections.** When Sofia corrects how a HER skill or these rules behaved (she says it did the wrong thing, or she states a preference about how it should work), name the skill or rule at fault and propose a concrete patch to its file in chat as a short diff. Never write it before she says yes; if she says no or ignores it, drop it. Not a trigger: writing-check fixes to her own English, corrections of the task's content (a bug, a wrong fact, a naming choice), and one-off wishes for this task only. Never create a new skill for this, only edit the existing skill or this file.
-8. **Uncertain decisions → grilling.** When work is blocked on Sofia's judgment (not a fact you can look up): outside plan-code, suggest with `HER fit: /her:grilling, <why>` and wait. Inside plan-code flows (`diagram`, `grill-me`, `grilling`, `debate`, `lazy`, `to-pr`, `judge`), auto-fire `/her:grilling` to clear the missing decision, then continue. Do not auto-fire `/her:grill-me` (user-only). Do not interview when a Read/Grep/subagent can answer.
+8. **Uncertain decisions → grilling.** When work is blocked on Sofia's judgment (not a fact you can look up): outside plan-code, suggest with `HER fit: /her:grilling, <why>` and wait. Inside plan-code flows (`grill-me`, `grilling`, `debate`, `lazy`, `to-pr`, `judge`, `pr-review`), auto-fire `/her:grilling` to clear the missing decision, then continue. Do not auto-fire `/her:grill-me` (user-only). Do not interview when a Read/Grep/subagent can answer.
 9. **Commits and branches.** `/her:lazy` and `/her:to-pr` both follow this.
    - One commit per logical change, committed as you go. A fix plus its tests is one commit; a later commit that only adds tests is `test:`.
    - Branch names: `<type>/<CARD>_<short_name>`, words joined with `_`, never `-` (e.g. `fix/ML-88_static_repetition_score`, `feat/DES2-213_nAIosh`, `proposal/DES2-238_nAIosh_on_demand`). The only hyphen is the one inside the card ID. Sub pattern not seen in the repo yet: ask Sofia once.
@@ -57,12 +57,14 @@ Group map:
 
 | Group | Skills | Mode |
 |---|---|---|
-| learn | understand, teach | professor |
-| research | last30days, research, prototype, report | professor |
-| plan code | diagram, grill-me, grilling, debate | professor |
+| learn | teach | professor |
+| research | research, report | professor |
+| plan code | grill-me, grilling, debate | professor |
 | produce code | lazy, to-pr, judge | caveman |
+| review | pr-review | adhd |
 | optimization | caveman | caveman |
-| unbloat | adhd, handoff, organize | adhd |
+| unbloat | adhd, handoff, memory | adhd |
+| orchestrate | her | adhd |
 | her | ask-her | adhd |
 
 Outside a HER skill, default to professor unless Sofia turned on `/her:caveman` or `/her:adhd` for the session.

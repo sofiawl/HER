@@ -3,7 +3,7 @@
 Several structurally different variants of one screen, switchable from a
 floating bottom bar, so Sofia flips between them in the browser instead of
 picking between vague mockups in her head. If the real question is about
-logic or state instead of appearance, stop, that is `LOGIC.md`.
+logic or state instead of appearance, stop, see research/LOGIC.md.
 
 ## 1. Prefer mounting on the existing page
 
@@ -56,7 +56,7 @@ already uses:
 Give Sofia the URL and the variant keys. The useful feedback is usually "the
 header from B with the sidebar from C", that combination is the actual
 design she wants, build a fourth variant for it if needed. Once one wins,
-follow step 5 of `SKILL.md`: fold the winner into the real page (rewritten
+follow research spike mode (SKILL.md): fold the winner into the real page (rewritten
 properly, prototype code skipped tests and error handling on purpose), and
 either delete the losing variants and the switcher or push the full set to
 a throwaway branch before dropping them from the real page.

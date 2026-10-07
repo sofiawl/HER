@@ -48,10 +48,10 @@ INTERACTIVE_SKILLS = {
     "grill-me",
     "debate",
     "teach",
-    "understand",
     "adhd",
     "caveman",
     "handoff",
+    "memory",
     "her",
 }
 

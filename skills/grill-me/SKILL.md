@@ -64,7 +64,6 @@ When the frontier is empty (or Sofia calls it), confirm shared understanding, th
 ```
 
 Then suggest the next step that fits:
-- `/her:diagram` if the design has structure worth seeing (flows, states, components),
 - `/her:to-pr plan` if the plan is ready to split into a PR stack,
 - `/her:debate` for any open question that is a real trade-off.
 

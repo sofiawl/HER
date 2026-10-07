@@ -60,9 +60,9 @@ fi
 [ -n "$reason" ] || exit 0
 
 jq -n --arg r "$reason" '{
-  systemMessage: ($r + " Run /her:handoff to save a resumable handoff doc."),
+  systemMessage: ($r + " Run /her:handoff to save this thread (ai-memory gets session end if wired)."),
   hookSpecificOutput: {
     hookEventName: "UserPromptSubmit",
-    additionalContext: ($r + " Tell Sofia once, briefly, to run /her:handoff now so the work can resume later. Do not run the handoff yourself unless she asks.")
+    additionalContext: ($r + " Tell Sofia once, briefly, to run /her:handoff now for HER-shaped state (next action + /her: skills). ai-memory hooks cover durable project memory on session end; do not run handoff yourself unless she asks.")
   }
 }'
