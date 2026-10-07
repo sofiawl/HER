@@ -3,9 +3,18 @@ set -euo pipefail
 
 HER_SKILLS_DIR="/home/sofia/HER/skills"
 CURSOR_SKILLS_DIR="${HOME}/.cursor/skills"
+HER_AGENTS_DIR="/home/sofia/HER/orchestrator/cursor-agents"
+CURSOR_AGENTS_DIR="${HOME}/.cursor/agents"
 LINK_MARKER=".her-installed"
 
 if [[ "${1:-}" == "--uninstall" ]]; then
+  for agent_file in "$HER_AGENTS_DIR"/*.md; do
+    agent_link="$CURSOR_AGENTS_DIR/$(basename "$agent_file")"
+    if [[ -L "$agent_link" ]]; then
+      rm "$agent_link"
+    fi
+  done
+
   if [[ ! -d "$CURSOR_SKILLS_DIR" ]]; then
     exit 0
   fi
@@ -48,3 +57,9 @@ for skill_dir in "$HER_SKILLS_DIR"/*/; do
 done
 
 touch "$CURSOR_SKILLS_DIR/$LINK_MARKER"
+
+mkdir -p "$CURSOR_AGENTS_DIR"
+
+for agent_file in "$HER_AGENTS_DIR"/*.md; do
+  ln -sfn "$agent_file" "$CURSOR_AGENTS_DIR/$(basename "$agent_file")"
+done

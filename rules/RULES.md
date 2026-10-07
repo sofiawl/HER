@@ -14,8 +14,7 @@ These apply in every session and every repo, on top of any HER skill.
 |---|---|---|
 | Haiku (`haiku`) | `composer-2.5-fast`, `gemini-3.8-flash-high`, `grok-4.7-high-fast`, `cursor-grok-4.6-high-fast` | Mechanical, zero decision: inventory, grep, versions, installs, copy, known commands, table/record updates |
 | Sonnet (`sonnet`) | `claude-sonnet-5-5-high`, `gpt-5.6-sol-medium` | Moderate judgment: explore code, run builds/tests and interpret failures, read sources, collect evidence, routine implementation |
-| Opus (`opus`) | `claude-opus-5-thinking-high`, `claude-opus-5-5-medium` | Deep work: multi-file design, long writing in Sofia's voice, synthesis across many sources |
-| Fable (`fable`) | `claude-fable-5-1-thinking-high` | Risk and final say: risky decisions, final diff review, verdicts, opening PRs |
+| Opus (`opus`) | `claude-opus-5-thinking-high`, `claude-opus-5-5-medium` | Deep work and final say: multi-file design, long writing in Sofia's voice, synthesis across many sources, risky decisions, final diff review, verdicts, opening PRs |
 
    - Prefer the cheapest slug in the tier that can do the chore. If it fails or comes back thin, go up one HER tier (or a stronger slug in-tier); do not retry the same slug blindly.
    - Independent chores go out in one message, in parallel. Never run timing benchmarks in parallel, they skew each other.
@@ -32,6 +31,9 @@ These apply in every session and every repo, on top of any HER skill.
    - Description in lowercase imperative, no trailing period (e.g. `fix: static posture alone scores +1 in REBA/RULA repetition`, `test: pin static-only repetition score in REBA suite`).
    - Never put the card ID in a commit message: no `(ML-88)` suffix, not in the subject, body or footer. The card lives in the branch name and the PR body only.
    - Ticket URLs: every card link in a PR body uses `https://loop.zslippy.com/issue/<CARD>` (e.g. `https://loop.zslippy.com/issue/ML-88`). Never a bare ID, never another tracker domain.
+   - Creating cards: every card HER creates is assigned to Sofia Lima (`sofia.lima@kinebot.com.br`). Pick the team by repo: `kinebot-standard` work goes to Web (key `DES`); `ML` (ML/IA) is only for `kinebot-cosmos`, research and PDI. A card about standard stays in Web even when the card it came from is in `ML`.
+   - Writing in Kineloop: everything HER writes there (card titles, descriptions, comments, documents) is in Brazilian Portuguese, even when the chat or the repo docs are in English. Code identifiers, paths and field names stay as they are.
+   - Kineloop links: never point a card, comment or document at a `.scratch/` file (or any other uncommitted local file); nobody else can open it. Put the content in the card itself or in a Kineloop document and link that, or link a committed file.
 
 ## Talking modes
 

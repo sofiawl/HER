@@ -92,5 +92,5 @@ Model tiers and delegation rules: HER rule 6.
 | Set up the base worktree and install deps | `haiku` | In parallel with the above |
 | Run correctness metrics (tests, coverage, lint, types) and interpret failures | `sonnet` | Base and current in parallel |
 | Run timing metrics (latency, build time, cold start) | `sonnet` | One agent, sequential, never in parallel with other runs |
-| Verdict when the change is risky (auth, data, migrations, money, public API) | `fable` | Gets the diff and the metrics table |
+| Verdict when the change is risky (auth, data, migrations, money, public API) | `opus` | Gets the diff and the metrics table |
 | Verdict otherwise | main | |

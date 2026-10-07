@@ -66,6 +66,6 @@ Model tiers and delegation rules: HER rule 6.
 |---|---|---|
 | Inventory the research folder, copy images, run latexmk, grep the log | `haiku` | Inventory in parallel per subfolder |
 | Read each result source and draft ledger rows | `sonnet` | One agent per subfolder or run, in parallel |
-| Rank and steelman the Main results | `fable` | Gets the full ledger and the purpose |
+| Rank and steelman the Main results | `opus` | Gets the full ledger and the purpose |
 | Write the `.tex` in pt-BR from the approved ledger and STYLE.md | `opus` | One agent |
 | Independent number check (Flow step 8) | `sonnet` | A different agent from the writer |

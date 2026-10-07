@@ -83,4 +83,4 @@ Model tiers and delegation rules: HER rule 6.
 | Size counts (`git diff --shortstat`), branch creation, stack table updates | `haiku` | Parallel per PR |
 | Map the changed files and behaviors, gather test commands and QA steps, run the QA | `sonnet` | Parallel per PR |
 | Write each PR description from TEMPLATE.md and VOICE.md | `opus` | One agent per PR, in parallel, each gets VOICE.md and TEMPLATE.md in full |
-| Review the stack split and each final diff, then open the PR after Sofia's yes | `fable` | Last, one PR at a time |
+| Review the stack split and each final diff, then open the PR after Sofia's yes | `opus` | Last, one PR at a time |

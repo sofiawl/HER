@@ -1,17 +1,21 @@
 import json
 import os
 import re
-import signal
-import sys
 import threading
-import time
 from datetime import datetime
 from pathlib import Path
 
-from .agents import TOKEN_KEYS, build_command, final_result, git, git_root, result_info, run_logged
-from .config import RUNS_DIR
+from .config import HER_ROOT, RUNS_DIR
+from .repo import checkout, dirty_files, git_root, resolved
 
-DONE, FAILED, RUNNING, PENDING, SKIPPED, BLOCKED = "done", "failed", "running", "pending", "skipped", "blocked"
+PENDING, RUNNING, REVIEW, DONE, FAILED, BLOCKED, SKIPPED = (
+    "pending", "running", "review", "done", "failed", "blocked", "skipped",
+)
+SETTLED = (DONE, FAILED, SKIPPED)
+REPORT_STATUSES = ("DONE", "DONE_WITH_CONCERNS", "NEEDS_CONTEXT", "BLOCKED", "FAILED")
+REVIEW_VERDICTS = ("approve", "changes")
+VERDICTS = ("ship", "fix", "needs-discussion")
+MAX_REVIEW_ROUNDS = 3
 
 
 class Run:
@@ -60,10 +64,6 @@ class Run:
     def decisions(self):
         return self.read("decisions.md")
 
-    def add_decision(self, question, answer):
-        text = self.decisions().rstrip("\n")
-        self.write("decisions.md", (text + "\n\n" if text else "") + f"Q: {question}\nA: {answer}\n")
-
     def plan(self):
         return json.loads(self.read("plan.json", "null"))
 
@@ -81,22 +81,30 @@ class Run:
         state.update(changes)
         self.save_state(state)
 
-    def step_log(self, sid):
-        return self.path / "steps" / f"{sid}.jsonl"
+    def step_state(self, sid):
+        return self.state().get("steps", {}).get(sid, {})
+
+    def step_status(self, sid):
+        return self.step_state(sid).get("status", PENDING)
+
+    def record(self, sid, **fields):
+        state = self.state()
+        state.setdefault("steps", {}).setdefault(sid, {}).update(fields)
+        self.save_state(state)
 
     def step_output(self, sid):
         return self.path / "steps" / f"{sid}.md"
+
+    def review_path(self, sid):
+        return self.path / "steps" / f"{sid}.review.md"
 
     def verdict_path(self, sid):
         return self.path / "steps" / f"{sid}.verdict.json"
 
 
-VERDICTS = ("ship", "fix", "needs-discussion")
-
-
 def read_verdict(path):
     try:
-        data = json.loads(path.read_text())
+        data = json.loads(Path(path).read_text())
     except FileNotFoundError:
         return "missing", f"no verdict file at {path}"
     except (OSError, json.JSONDecodeError):
@@ -106,391 +114,223 @@ def read_verdict(path):
     return data["verdict"], str(data.get("why", "")).strip()
 
 
+def report_status(report):
+    for line in reversed(report.strip().splitlines()):
+        word = line.strip().strip("*`").split(":", 1)[0].strip().upper()
+        if word in REPORT_STATUSES:
+            return word, line.strip().strip("*`").partition(":")[2].strip()
+        if line.strip():
+            break
+    return None, ""
+
+
+def _steps(plan):
+    return {step["id"]: step for step in plan["steps"]}
+
+
+def _repo_root(step):
+    return git_root(step["cwd"]) or resolved(step["cwd"])
+
+
+def ready_steps(run):
+    plan = run.plan()
+    steps = _steps(plan)
+    changed = True
+    while changed:
+        changed = False
+        for step in plan["steps"]:
+            sid = step["id"]
+            if run.step_status(sid) != PENDING:
+                continue
+            reason = _skip_reason(run, steps, step)
+            if reason:
+                run.record(sid, status=SKIPPED, reason=reason)
+                changed = True
+    busy = {
+        _repo_root(step) for step in plan["steps"]
+        if step["writes"] and run.step_status(step["id"]) in (RUNNING, REVIEW, BLOCKED)
+    }
+    ready = []
+    for step in plan["steps"]:
+        if run.step_status(step["id"]) != PENDING:
+            continue
+        if not all(run.step_status(dep) == DONE for dep in step.get("depends_on", [])):
+            continue
+        if step["writes"]:
+            root = _repo_root(step)
+            if root in busy:
+                continue
+            busy.add(root)
+        ready.append(step)
+    return ready
+
+
+def _skip_reason(run, steps, step):
+    for dep in step.get("depends_on", []):
+        if run.step_status(dep) in (FAILED, SKIPPED):
+            return f"dependency {dep} {run.step_status(dep)}"
+    if step.get("skill") != "to-pr":
+        return None
+    for dep in step.get("depends_on", []):
+        if steps[dep].get("skill") == "judge" and run.step_status(dep) == DONE:
+            verdict, why = read_verdict(run.verdict_path(dep))
+            if verdict != "ship":
+                return f"judge verdict: {verdict}: {why}"
+    return None
+
+
+def preflight(run, step):
+    if not step["writes"]:
+        return None
+    root = git_root(step["cwd"])
+    if root is None:
+        return None
+    plan = run.plan()
+    started = any(
+        run.step_state(other["id"]).get("began") and git_root(other["cwd"]) == root
+        for other in plan["steps"] if other["writes"]
+    )
+    if not started:
+        dirty = dirty_files(root)
+        if dirty:
+            return f"dirty tree in {root}: " + ", ".join(line.strip() for line in dirty[:10])
+    if not step.get("branch"):
+        return None
+    base = next(
+        (repo.get("base") for repo in plan.get("repos", []) if resolved(repo["path"]) == root),
+        None,
+    )
+    return checkout(step["cwd"], step["branch"], base or "main")
+
+
+def skill_path(skill):
+    return HER_ROOT / "skills" / skill / "SKILL.md"
+
+
 def step_rules(step):
     return [
         "## Rules",
         "- Follow HER rules: no code comments, no em dash, no en dash, no emojis.",
         "- Do not commit, push, open PRs or install anything unless your task says so.",
-        "- You may edit files." if step["writes"] else "- Read only: do not edit any file.",
-        "- You run headless: nobody answers during this run.",
-        "- If you cannot continue without a decision from Sofia, stop, change nothing more, and end",
-        "  your final reply with one line `QUESTION: <one clear question with the options>`.",
+        "- You may edit files inside the paths of your task." if step["writes"] else "- Read only: do not edit any file.",
+        "- Nobody answers you during this step. Do not guess a decision that belongs to Sofia.",
         "- End with a short report: what you did, files changed, checks run and their results,",
-        "  open questions.",
+        "  concerns. The last line is exactly one of:",
+        "  `DONE`, `DONE_WITH_CONCERNS: <concern>`, `NEEDS_CONTEXT: <what is missing>`,",
+        "  `BLOCKED: <why>`.",
     ]
 
 
-def step_prompt(run, plan, step, earlier=None):
+def brief(run, step, note=None):
+    plan = run.plan()
     lines = [
-        f"HER headless run. Decisions: {run.path / 'decisions.md'}",
-        "",
-        f"You are step `{step['id']}` ({step['title']}) of a HER orchestrator run.",
+        f"You are step `{step['id']}` ({step['title']}) of HER run {run.id}.",
+        f"Work in {step['cwd']}." + (f" Branch {step['branch']} is checked out." if step.get("branch") else ""),
     ]
+    if step.get("add_dirs"):
+        lines.append("Other dirs you may use: " + ", ".join(step["add_dirs"]))
     if step.get("skill"):
-        handle = f"her-{step['skill']}" if step["agent"] == "cursor" else f"her:{step['skill']}"
-        lines.append(f"Use the HER skill `{handle}` for this step.")
+        lines.append(f"Read and follow the HER skill at {skill_path(step['skill'])} (headless mode if it has one).")
     lines += ["", "## Overall goal", plan["summary"], "", "## Your task", step["task"]]
     decisions = run.decisions().strip()
     if decisions:
         lines += ["", "## Settled decisions (final, do not reopen)", decisions]
     deps = step.get("depends_on", [])
     if deps:
-        lines += ["", "## Outputs of earlier steps (read them first)"]
+        lines += ["", "## Reports of earlier steps (read them first)"]
         lines += [f"- {dep}: {run.step_output(dep)}" for dep in deps]
     if step.get("skill") == "judge":
         lines += [
             "", "## Verdict file",
             f"Write your verdict to {run.verdict_path(step['id'])} as JSON with the keys `verdict`",
             "(one of ship, fix, needs-discussion), `why` (one sentence) and `table` (the metrics table",
-            "as a markdown string). This is the only file you may write when the step is read only.",
-            "A to-pr step that depends on you runs only when the verdict is ship.",
+            "as a markdown string). This is the only file you may write.",
         ]
-    if earlier:
-        lines += ["", f"Earlier question: {earlier[0]}", f"Sofia's answer: {earlier[1]}"]
+    review = run.review_path(step["id"])
+    if review.exists() and run.step_state(step["id"]).get("review") == "changes":
+        lines += ["", "## Review to address (fix every point, then report again)", review.read_text().strip()]
+    if note:
+        lines += ["", "## Note from the controller", note]
     return "\n".join(lines + [""] + step_rules(step))
 
 
-def resume_prompt(step, answer):
-    return "\n".join([f"Sofia's answer: {answer}", "", "Continue your task with this answer."] + [""] + step_rules(step))
+def review_brief(run, step):
+    lines = [
+        f"You review step `{step['id']}` ({step['title']}) of HER run {run.id}. Read only: do not edit any file.",
+        f"Repo: {step['cwd']}" + (f", branch {step['branch']}." if step.get("branch") else "."),
+        "",
+        "## The task the step was given",
+        step["task"],
+        "",
+    ]
+    decisions = run.decisions().strip()
+    if decisions:
+        lines += ["## Settled decisions", decisions, ""]
+    lines += [
+        f"## The implementer report\n{run.step_output(step['id'])}",
+        "",
+        "## How to review",
+        "1. Spec: read the diff (`git diff` and untracked files). Does it do exactly the task, nothing",
+        "   missing and nothing extra? Do not trust the report, check the code.",
+        "2. Quality: correctness, tests run and passing, HER rules (no code comments, no em dash,",
+        "   no en dash, no emojis), names, dead code.",
+        "3. List each problem with file:line and the fix. Ignore style nits that no rule covers.",
+        "",
+        "The last line of your reply is exactly `APPROVE` or `CHANGES`.",
+    ]
+    return "\n".join(lines)
 
 
-def head_commit(cwd):
-    found = git(cwd, "rev-parse", "--verify", "--quiet", "HEAD")
-    return found.stdout.strip() if found.returncode == 0 else None
+def finish(run, step, status, report):
+    sid = step["id"]
+    run.write(f"steps/{sid}.md", report)
+    if status in ("NEEDS_CONTEXT", "BLOCKED"):
+        run.record(sid, status=BLOCKED, reason=report_status(report)[1] or status.lower())
+        return BLOCKED
+    if status == "FAILED":
+        run.record(sid, status=FAILED, reason=report_status(report)[1] or "implementer failed")
+        return FAILED
+    if step.get("skill") == "judge":
+        verdict, why = read_verdict(run.verdict_path(sid))
+        if verdict not in VERDICTS:
+            run.record(sid, status=FAILED, reason=why)
+            return FAILED
+        run.record(sid, status=DONE, reason=f"verdict {verdict}: {why}")
+        return DONE
+    if step["writes"]:
+        run.record(sid, status=REVIEW, concerns=status == "DONE_WITH_CONCERNS")
+        return REVIEW
+    run.record(sid, status=DONE, concerns=status == "DONE_WITH_CONCERNS")
+    return DONE
 
 
-def step_verdict(code, result, info, committed=False):
-    if code != 0:
-        return FAILED, f"exit code {code}"
-    if not result.strip():
-        return FAILED, "empty result"
-    if info["subtype"] not in (None, "success"):
-        return FAILED, f"subtype {info['subtype']}"
-    if info["is_error"]:
-        return FAILED, "is_error"
-    denials = info["permission_denials"]
-    if denials and not committed:
-        counts = {}
-        for name in denials:
-            counts[name] = counts.get(name, 0) + 1
-        return FAILED, "denied: " + ", ".join(f"{n} x{c}" for n, c in counts.items())
-    if info.get("question"):
-        return BLOCKED, "needs answer"
-    if info["blocked"]:
-        return FAILED, "blocked"
-    return DONE, None
+def review(run, step, verdict, text):
+    sid = step["id"]
+    run.write(f"steps/{sid}.review.md", text)
+    rounds = run.step_state(sid).get("review_rounds", 0) + 1
+    if verdict == "approve":
+        run.record(sid, status=DONE, review="approve", review_rounds=rounds)
+        return DONE
+    if rounds >= MAX_REVIEW_ROUNDS:
+        run.record(sid, status=BLOCKED, review="changes", review_rounds=rounds,
+                   reason=f"review asked for changes {rounds} times")
+        return BLOCKED
+    run.record(sid, status=RUNNING, review="changes", review_rounds=rounds)
+    return RUNNING
 
 
-MAX_ATTEMPTS = 3
-FAST_FAIL_SECONDS = 30
-
-
-def candidates(config, step):
-    if step.get("fallback_models"):
-        fallbacks = [tuple(entry.split("/", 1)) for entry in step["fallback_models"]]
-    else:
-        fallbacks = config.fallbacks(step["agent"], step.get("tier"))
-    chain = [(step["agent"], step["model"])]
-    for option in fallbacks:
-        if option not in chain:
-            chain.append(option)
-    return chain[:MAX_ATTEMPTS]
-
-
-def fast_failure(status, seconds, info):
-    if status != FAILED:
-        return False
-    if seconds < FAST_FAIL_SECONDS and not info["has_text"]:
-        return True
-    errored = info["is_error"] or str(info["subtype"] or "").startswith("error")
-    return errored and not info["tool_uses"]
-
-
-def checkout(cwd, branch, base):
-    exists = git(cwd, "rev-parse", "--verify", "--quiet", f"refs/heads/{branch}").returncode == 0
-    done = git(cwd, "checkout", branch) if exists else git(cwd, "checkout", "-b", branch, base)
-    if done.returncode == 0:
-        return None
-    lines = (done.stderr or done.stdout).strip().splitlines()
-    return f"git checkout {branch} failed: {lines[-1] if lines else done.returncode}"
-
-
-class Executor:
-    def __init__(self, config, run, out=print):
-        self.config = config
-        self.run = run
-        self.plan = run.plan()
-        self.out = out
-        self.lock = threading.RLock()
-        self.wake = threading.Event()
-        self.cwd_locks = {}
-        state = run.state().get("steps", {})
-        self.status = {
-            s["id"]: state.get(s["id"], {}).get("status") if state.get(s["id"], {}).get("status") in (DONE, BLOCKED) else PENDING
-            for s in self.plan["steps"]
-        }
-        self.steps = {s["id"]: s for s in self.plan["steps"]}
-        self.started = {}
-        self.processes = {}
-        self.prepared = set()
-
-    def _prepare_repo(self, step):
-        root = git_root(step["cwd"])
-        if root is None:
-            return None
-        with self.lock:
-            saved = self.run.state().get("steps", {})
-            ran = any(
-                saved.get(s["id"], {}).get("attempts") and git_root(s["cwd"]) == root
-                for s in self.plan["steps"] if s["writes"]
-            )
-            first = root not in self.prepared and not ran
-            self.prepared.add(root)
-        if first and git(root, "status", "--porcelain").stdout.strip():
-            return "dirty tree"
-        if not step.get("branch"):
-            return None
-        base = next(
-            (r.get("base") for r in self.plan.get("repos", [])
-             if Path(r["path"]).expanduser().resolve() == root),
-            None,
-        )
-        return checkout(step["cwd"], step["branch"], base or "main")
-
-    def _record(self, sid, **fields):
-        with self.lock:
-            state = self.run.state()
-            state.setdefault("steps", {}).setdefault(sid, {}).update(fields)
-            self.run.save_state(state)
-
-    def _say(self, text):
-        with self.lock:
-            if sys.stdout.isatty():
-                sys.stdout.write("\r\033[K")
-            self.out(f"[{datetime.now():%H:%M:%S}] {text}", flush=True)
-
-    def _ready(self, step):
-        if self.status[step["id"]] != PENDING:
-            return False
-        deps = step.get("depends_on", [])
-        if any(self.status[d] in (FAILED, SKIPPED) for d in deps):
-            self.status[step["id"]] = SKIPPED
-            self._record(step["id"], status=SKIPPED)
-            self._say(f"skip   {step['id']}: a dependency failed")
-            return False
-        if not all(self.status[d] == DONE for d in deps):
-            return False
-        if step.get("skill") == "to-pr":
-            for dep in deps:
-                if self.steps[dep].get("skill") != "judge":
-                    continue
-                verdict, why = read_verdict(self.run.verdict_path(dep))
-                if verdict != "ship":
-                    reason = f"judge verdict: {verdict}: {why}"
-                    self.status[step["id"]] = SKIPPED
-                    self._record(step["id"], status=SKIPPED, reason=reason)
-                    self._say(f"skip   {step['id']}: {reason}")
-                    return False
-        if step["writes"]:
-            busy = [
-                s for s in self.plan["steps"]
-                if self.status[s["id"]] == RUNNING and s["writes"] and s["cwd"] == step["cwd"]
-            ]
-            if busy:
-                return False
-        return True
-
-    def _execute(self, step):
-        try:
-            self._execute_step(step)
-        except Exception as error:
-            sid = step["id"]
-            reason = f"orchestrator error: {type(error).__name__}: {error}"
-            with self.lock:
-                self.status[sid] = FAILED
-            try:
-                self._record(sid, status=FAILED, reason=reason)
-            finally:
-                self._say(f"{FAILED:<6} {sid}: {reason}")
-        finally:
-            self.wake.set()
-
-    def _execute_step(self, step):
-        sid = step["id"]
-        problem = self._prepare_repo(step) if step["writes"] else None
-        if problem:
-            with self.lock:
-                self.status[sid] = FAILED
-            self._record(sid, status=FAILED, reason=problem)
-            self._say(f"{FAILED:<6} {sid}: {problem}")
-            return
-        saved = self.run.state().get("steps", {}).get(sid, {})
-        answer = saved.get("answer")
-        add_dirs = [str(self.run.path)] + [d for d in step.get("add_dirs", []) if d != step["cwd"]]
-        writes = step["writes"] or step.get("skill") == "judge"
-        log_path = self.run.step_log(sid)
-        attempts = []
-        tokens = {name: 0 for name in TOKEN_KEYS}
-        has_tokens = False
-        cost = 0.0
-        has_cost = False
-        for agent, model in candidates(self.config, step):
-            current = dict(step, agent=agent, model=model)
-            resume = None
-            if attempts:
-                self._say(f"retry  {sid} on {agent}/{model} ({attempts[-1]['reason']})")
-                log_path.rename(log_path.with_name(f"{sid}.attempt{len(attempts)}.jsonl"))
-            if answer and not attempts and agent == "claude" and saved.get("session_id"):
-                prompt, resume = resume_prompt(current, answer), saved["session_id"]
-            else:
-                earlier = (saved.get("question"), answer) if answer else None
-                prompt = step_prompt(self.run, self.plan, current, earlier)
-            command = build_command(self.config, agent, prompt, model, step["cwd"], add_dirs, writes, resume)
-            began = time.time()
-            head_before = head_commit(step["cwd"])
-            process = run_logged(command, step["cwd"], log_path, append=resume is not None)
-            self.processes[sid] = process
-            code = process.wait()
-            result = final_result(log_path)
-            info = result_info(log_path)
-            head_after = head_commit(step["cwd"])
-            committed = head_after is not None and head_after != head_before
-            status, reason = step_verdict(code, result, info, committed)
-            seconds = int(time.time() - began)
-            if info["tokens"] is not None:
-                has_tokens = True
-                for name in tokens:
-                    tokens[name] += info["tokens"][name]
-            if info["cost"] is not None:
-                has_cost = True
-                cost += info["cost"]
-            attempts.append({"agent": agent, "model": model, "status": status, "reason": reason, "seconds": seconds})
-            self._record(
-                sid,
-                attempts=attempts,
-                tokens=tokens if has_tokens else None,
-                cost=cost if has_cost else None,
-            )
-            if code < 0 or not fast_failure(status, seconds, info):
-                break
-        self.run.step_output(sid).write_text(result)
-        elapsed = int(time.time() - self.started[sid])
-        with self.lock:
-            self.status[sid] = status
-        blocked = status == BLOCKED
-        self._record(
-            sid, status=status, exit_code=code, seconds=elapsed, reason=reason,
-            question=info["question"] if blocked else None,
-            session_id=info["session_id"] if blocked else None,
-            answer=None,
-            tokens=tokens if has_tokens else None,
-            cost=cost if has_cost else None,
-        )
-        why = f" ({reason})" if reason else ""
-        self._say(f"{status:<6} {sid} in {elapsed}s{why} -> {self.run.step_output(sid)}")
-
-    def _pick_up_answers(self):
-        if BLOCKED not in self.status.values():
-            return
-        steps = self.run.state().get("steps", {})
-        for sid, value in self.status.items():
-            if value == BLOCKED and steps.get(sid, {}).get("status") == PENDING:
-                self.status[sid] = PENDING
-
-    def _status_line(self):
-        counts = {}
-        for value in self.status.values():
-            counts[value] = counts.get(value, 0) + 1
-        running = [sid for sid, value in self.status.items() if value == RUNNING]
-        parts = [f"{k} {v}" for k, v in counts.items()]
-        return f"  {' | '.join(parts)}   running: {', '.join(running) or '-'}"
-
-    def _stop(self, signum, frame):
-        for sid, process in list(self.processes.items()):
-            if process.poll() is None:
-                process.terminate()
-        for sid, value in self.status.items():
-            if value == RUNNING:
-                self._record(sid, status=FAILED, exit_code=-15)
-        self.run.update_state(phase="stopped")
-        raise SystemExit(143)
-
-    def execute(self):
-        signal.signal(signal.SIGTERM, self._stop)
-        self.run.update_state(phase="executing")
-        threads = []
-        while True:
-            self._pick_up_answers()
-            before = dict(self.status)
-            with self.lock:
-                running = sum(1 for v in self.status.values() if v == RUNNING)
-            for step in self.plan["steps"]:
-                if running >= self.config.max_parallel:
-                    break
-                if self._ready(step):
-                    sid = step["id"]
-                    with self.lock:
-                        self.status[sid] = RUNNING
-                    self.started[sid] = time.time()
-                    self._record(sid, status=RUNNING, started_at=self.started[sid], seconds=None, exit_code=None, reason=None)
-                    skill = f" /her:{step['skill']}" if step.get("skill") else ""
-                    mode = "writes" if step["writes"] else "reads"
-                    self._say(f"start  {sid}{skill} on {step['agent']}/{step['model']} ({mode}) in {step['cwd']}")
-                    thread = threading.Thread(target=self._execute, args=(step,), daemon=True)
-                    thread.start()
-                    threads.append(thread)
-                    running += 1
-            with self.lock:
-                busy = RUNNING in self.status.values()
-                idle = not busy and before == self.status
-            if idle:
-                break
-            if sys.stdout.isatty():
-                with self.lock:
-                    sys.stdout.write("\r\033[K" + self._status_line())
-                    sys.stdout.flush()
-            # Poll once a second for answers while steps run, waking at once when one ends.
-            # With nothing running, the loop itself changed a status (a skip), so recheck now.
-            if busy:
-                self.wake.wait(1)
-                self.wake.clear()
-        for thread in threads:
-            thread.join()
-        if sys.stdout.isatty():
-            sys.stdout.write("\r\033[K")
-        values = self.status.values()
-        if all(v == DONE for v in values):
-            phase = "done"
-        elif BLOCKED in values:
-            phase = "needs-answer"
-        else:
-            phase = "finished-with-failures"
-        self.run.update_state(phase=phase)
-        self._write_summary()
-        return phase
-
-    def _write_summary(self):
-        lines = [f"# HER run {self.run.id}", "", self.plan["summary"], "", "## Steps", ""]
-        steps = self.run.state().get("steps", {})
-        for step in self.plan["steps"]:
-            info = steps.get(step["id"], {})
-            reason = info.get("reason")
-            why = f" ({reason})" if reason else ""
-            tokens = info.get("tokens")
-            token_text = ", ".join(f"{name} {tokens[name]}" for name in TOKEN_KEYS) if tokens else "-"
-            cost = f"${info['cost']:.6f}" if info.get("cost") is not None else "-"
-            lines.append(
-                f"- `{step['id']}` {self.status[step['id']]}{why}: "
-                f"tokens {token_text}; cost {cost}; {self.run.step_output(step['id'])}"
-            )
-        blocked = [sid for sid, value in self.status.items() if value == BLOCKED]
-        if blocked:
-            lines += ["", "## Open questions", ""]
-            for sid in blocked:
-                lines.append(f"- `{sid}`: {steps.get(sid, {}).get('question')}")
-                lines.append(f'  answer with: her answer {sid} "..."')
-        missing = self.plan.get("missing_skills", [])
-        if missing:
-            lines += ["", "## Skills HER is missing", ""]
-            lines += [f"- `{m['name']}`: {m['would_do']} ({m['why']})" for m in missing]
-        self.run.write("summary.md", "\n".join(lines) + "\n")
+def write_summary(run):
+    plan = run.plan()
+    lines = [f"# {plan.get('title') or run.id}", "", plan["summary"], "", "## Steps"]
+    for step in plan["steps"]:
+        info = run.step_state(step["id"])
+        why = f": {info['reason']}" if info.get("reason") else ""
+        lines.append(f"- {step['id']} ({step['title']}): {info.get('status', PENDING)}{why}")
+    blocked = [step["id"] for step in plan["steps"] if run.step_status(step["id"]) == BLOCKED]
+    if blocked:
+        lines += ["", "## Open questions"] + [f"- {sid}: {run.step_state(sid).get('reason', '')}" for sid in blocked]
+    if plan.get("missing_skills"):
+        lines += ["", "## Skills HER is missing"]
+        lines += [f"- {s['name']}: {s['would_do']} ({s['why']})" for s in plan["missing_skills"]]
+    run.write("summary.md", "\n".join(lines) + "\n")
+    return run.path / "summary.md"

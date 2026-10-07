@@ -1,10 +1,9 @@
 import json
 import os
 import re
-import shutil
 from pathlib import Path
 
-from .agents import git, git_root
+from .repo import dirty_files, git_root, resolved
 from .config import TIERS
 from .skills import catalog, catalog_text
 
@@ -13,13 +12,16 @@ BRANCH_PATTERN = re.compile(
 )
 
 PER_REPO_SKILLS = ("judge", "to-pr")
+CARD_PATTERN = re.compile(r"[A-Z][A-Z0-9]*-[0-9]+")
 
 PLAN_SCHEMA = {
     "type": "object",
     "additionalProperties": False,
-    "required": ["summary", "repos", "decisions", "steps", "missing_skills"],
+    "required": ["summary", "host", "repos", "decisions", "steps", "missing_skills"],
     "properties": {
         "title": {"type": "string"},
+        "host": {"type": "string"},
+        "card": {"type": "string"},
         "summary": {"type": "string"},
         "repos": {
             "type": "array",
@@ -70,7 +72,6 @@ PLAN_SCHEMA = {
                     "depends_on": {"type": "array", "items": {"type": "string"}},
                     "task": {"type": "string"},
                     "branch": {"type": "string"},
-                    "fallback_models": {"type": "array", "items": {"type": "string"}},
                 },
             },
         },
@@ -103,76 +104,74 @@ def _models_text(config):
     return "\n".join(lines)
 
 
-def _preference_lines(config):
-    if not config.prefer_agents:
-        return []
-    return [
-        "- Sofia's agent preference order is " + ", ".join(f"`{a}`" for a in config.prefer_agents)
-        + ". Use it to break ties between equally good fits before comparing cost.",
-    ]
-
-
 def guide_text(config):
     return "\n".join([
         "# HER planning guide",
         "",
-        "You are the chat agent. Act as /her:ask-her: read the repos, settle every decision with",
-        "Sofia by grilling in this conversation, then write the plan files and call `her`.",
+        "You are the controller: the chat session Sofia talks to. You grill, plan, dispatch one",
+        "fresh subagent per step, review its work with another fresh subagent, and report to Sofia.",
+        "You never do step work yourself. The run ledger in ~/.her/runs/<id>/ is your memory.",
         "",
         "## Skills available as steps",
         catalog_text(catalog()),
         "",
-        "## Agents and models (step.model must be one of these for step.agent and step.tier)",
+        "## Models (step.model must be one of these for the host and step.tier)",
         _models_text(config),
         "",
         "## How to plan",
-        "- Each step runs headless (no human in the loop) in its own agent process. Interactive",
-        "  skills are never steps.",
-        "- Anything that needs Sofia's judgment (a domain rule, a trade-off, naming, scope) is settled",
-        "  by you through grilling BEFORE writing the plan. Facts you can look up are never questions:",
-        "  read the repos yourself.",
-        "- A step that still needs Sofia ends its reply with `QUESTION: ...`. It becomes BLOCKED,",
-        "  its dependents wait, and `her answer <step_id> \"...\"` resumes it.",
+        "- Set `host` to the app you run in (`claude` for Claude Code, `cursor` for cursor-agent).",
+        "  Every step uses `agent` equal to `host`: you can only dispatch subagents of your own app.",
+        "- If the request names a Kineloop card (like ML-86), set `card`, read the card with the",
+        "  Kineloop tools while grilling, and put the card ID in branch names.",
+        "- Interactive skills are never steps. Anything that needs Sofia's judgment (a domain rule,",
+        "  a trade-off, naming, scope) is settled by grilling BEFORE writing the plan. Facts you can",
+        "  look up are never questions: read the repos or dispatch a lookup subagent.",
         "- Write the settled decisions to <run>/decisions.md, one bullet per decision with the",
-        "  question, the answer and why. Every step receives that file.",
+        "  question, the answer and why. Every brief includes that file.",
         "- plan.json `decisions` must be empty, or only list decisions already settled in decisions.md.",
-        "- Pick the cheapest tier that can do each step. Pick the model that fits the step type best,",
-        "  break ties on relative cost, and do not default to one agent.",
-        *_preference_lines(config),
-        "- Steps run headless and cannot ask Sofia. Every decision a step needs must already be in",
-        "  decisions.md and in the step's task text.",
+        "- Pick the cheapest tier that can do each step and the model that fits the step type best.",
+        "  Use `opus` for risky decisions, final review and verdicts.",
         "- `judge` and `to-pr` run once per repo, with cwd set to that repo and no other repo in",
         "  add_dirs. When more than one repo has `to-pr` steps, add a final step that links the",
         "  companion PRs to each other.",
         "- `skill` is a skill name from the list, or null when no skill fits. When a step needs a",
         "  capability no HER skill covers, still plan it with skill null and add an entry to",
         "  `missing_skills` describing the skill that should exist.",
-        "- `task` is self-contained: goal, exact paths, what to produce and in what shape.",
+        "- `task` is self-contained: goal, exact paths, what to produce and in what shape. Size each",
+        "  writing step so one subagent finishes it and a reviewer can check it in one pass.",
         "- `cwd` is an absolute path. `add_dirs` lists other absolute dirs the step must read or edit.",
         "- `writes` is true only when the step edits files. Steps never commit, push or open PRs",
         "  unless the request explicitly asks for it.",
-        "- `depends_on` lists step ids whose output this step needs. Independent steps run in",
-        "  parallel. End code-changing pipelines with a `judge` step.",
-        "- A `judge` step writes <run>/steps/<id>.verdict.json (verdict ship, fix or",
-        "  needs-discussion). A `to-pr` step that depends on a judge step is skipped unless the",
-        "  verdict is ship.",
+        "- `depends_on` lists step ids whose report this step needs. End code-changing pipelines",
+        "  with a `judge` step. A `to-pr` step after a judge step is skipped unless the verdict is ship.",
         "- A writing step whose cwd is a git repo must set `branch`, shaped",
         "  `<type>/<CARD-or-word>_<words_with_underscores>` with type feat, fix, proposal, chore,",
         "  refactor, docs or test (hyphen only inside a card ID, e.g. feat/ML-88_export_csv).",
-        "  The executor checks it out, creating it from the repo `base` when missing. The first",
-        "  writing step in a repo fails with `dirty tree` if the repo has uncommitted changes.",
-        "- A step that fails fast is retried on the same tier with the other agents, then one tier",
-        "  down, at most 3 attempts. Optional `fallback_models` (list of `agent/model`) sets that",
-        "  order instead.",
-        "- `repos` lists every repo involved with absolute paths, and optional `base` (default",
-        "  main) for new branches.",
-        "- `title` is a short label shown in the dashboard.",
+        "  `her begin` checks it out, creating it from the repo `base` (default main) when missing.",
+        "  The first writing step in a repo refuses a dirty tree.",
+        "- `title` is a short label for the step.",
         "",
         "## Flow",
         "1. `her new` with the request on stdin prints `id` and `path`.",
-        "2. Write <path>/decisions.md and <path>/plan.json.",
+        "2. Grill Sofia, write <path>/decisions.md and <path>/plan.json.",
         "3. `her check <id>` until it prints the plan without problems.",
-        "4. Show Sofia the plan, get approval, then `her start <id>`.",
+        "4. Show Sofia the plan and the missing skills. On approval run `her approve <id>`.",
+        "   With a card, move it to started in Kineloop.",
+        "5. Loop until `her next <id>` returns no ready steps:",
+        f"   a. For each ready step (at most {config.max_parallel} at once; `her next` already holds",
+        "      back a second writing step in the same repo): `her begin <id> <sid>` prints the brief.",
+        "      Dispatch a fresh subagent with the step model and the brief pasted verbatim.",
+        "   b. Pipe the report to `her finish <id> <sid> <STATUS>` with the status from its last line.",
+        "   c. A writing step goes to review: `her review-brief <id> <sid>` prints the review brief.",
+        "      Dispatch a fresh read-only reviewer on the `opus` tier and pipe its reply to",
+        "      `her review <id> <sid> approve|changes`. On changes, `her begin` again and dispatch a",
+        "      fresh implementer: the brief carries the review. After 3 rounds the step is blocked.",
+        "   d. A blocked step (NEEDS_CONTEXT, BLOCKED, too many review rounds) goes to Sofia. Ask her",
+        "      in the chat, then `her begin <id> <sid> --note \"<answer>\"` and dispatch again. A step",
+        "      that blocks on capability may move up a tier: change its model in plan.json and run",
+        "      `her check` first.",
+        "6. `her summary <id>`, show Sofia the summary and PR links. With a card, comment the",
+        "   summary on it and move it to review when PRs are open.",
         "",
         "## plan.json schema",
         json.dumps(PLAN_SCHEMA, indent=2),
@@ -191,6 +190,10 @@ def validate(plan, config):
                 problems.append(f"step {step.get('id', number)}: missing key {key}")
     if problems:
         return problems
+    if plan["host"] not in config.agents():
+        problems.append(f"unknown host {plan['host']}, use one of {', '.join(config.agents())}")
+    if plan.get("card") and not CARD_PATTERN.fullmatch(plan["card"]):
+        problems.append(f"card {plan['card']} must look like ML-86")
     skills = catalog()
     ids = [step["id"] for step in plan.get("steps", [])]
     if len(ids) != len(set(ids)):
@@ -217,10 +220,8 @@ def validate(plan, config):
             problems.append(
                 f"step {sid}: branch {step['branch']} must look like feat/ML-88_short_words or fix/word_more_words"
             )
-        for entry in step.get("fallback_models", []):
-            agent, _, model = entry.partition("/")
-            if agent not in config.agents() or not model:
-                problems.append(f"step {sid}: fallback model {entry} must be <agent>/<model> with a known agent")
+        if step.get("agent") != plan.get("host"):
+            problems.append(f"step {sid}: agent {step.get('agent')} differs from host {plan.get('host')}")
         for dep in step.get("depends_on", []):
             if dep not in ids:
                 problems.append(f"step {sid}: depends on unknown step {dep}")
@@ -232,19 +233,15 @@ def validate(plan, config):
     return problems
 
 
-def _resolved(path):
-    return Path(os.path.expanduser(path)).resolve()
-
-
 def _other_repo_problems(step, repos):
-    own = _resolved(step.get("cwd", ""))
+    own = resolved(step.get("cwd", ""))
     problems = []
     for repo in repos:
-        root = _resolved(repo.get("path", ""))
+        root = resolved(repo.get("path", ""))
         if own == root or root in own.parents:
             continue
         for extra in step.get("add_dirs", []):
-            path = _resolved(extra)
+            path = resolved(extra)
             if path == root or root in path.parents:
                 problems.append(
                     f"step {step['id']}: {step['skill']} runs once per repo, remove {repo.get('name', root)} from add_dirs"
@@ -253,29 +250,21 @@ def _other_repo_problems(step, repos):
     return problems
 
 
-def _dirty_files(path):
-    found = git(path, "status", "--porcelain")
-    return [line for line in found.stdout.splitlines() if line.strip()] if found.returncode == 0 else []
-
-
 def _preflight_problems(plan, config):
     problems = []
     steps = plan.get("steps", [])
-    for agent in sorted({step.get("agent") for step in steps if step.get("agent") in config.agents()}):
-        if shutil.which(config.binary(agent)) is None:
-            problems.append(f"agent {agent}: binary {config.binary(agent)} not found on PATH")
     writers = [step for step in steps if step.get("writes")]
     for repo in plan.get("repos", []):
-        root = _resolved(repo.get("path", ""))
+        root = resolved(repo.get("path", ""))
         if not root.is_dir() or git_root(root) is None:
             problems.append(f"repo {repo.get('name', root)}: {root} is not a git repo")
             continue
         touched = any(
-            root in _resolved(p).parents or _resolved(p) == root
+            root in resolved(p).parents or resolved(p) == root
             for step in writers
             for p in [step.get("cwd", ""), *step.get("add_dirs", [])]
         )
-        dirty = _dirty_files(root) if touched else []
+        dirty = dirty_files(root) if touched else []
         if dirty:
             problems.append(
                 f"repo {repo.get('name', root)}: dirty tree, commit or stash first: "
@@ -286,13 +275,12 @@ def _preflight_problems(plan, config):
 
 
 def warnings(plan, config):
-    used = {step.get("agent") for step in plan.get("steps", [])}
-    if len(used) == 1 and len(config.agents()) > 1:
-        return [
-            f"every step uses agent {next(iter(used))} while {len(config.agents())} agents are configured, "
-            "check that no step fits another agent better"
-        ]
-    return []
+    found = []
+    if not any(step.get("skill") == "judge" for step in plan.get("steps", [])) and any(
+        step.get("writes") for step in plan.get("steps", [])
+    ):
+        found.append("the plan changes code but has no judge step")
+    return found
 
 
 def _has_cycle(steps):

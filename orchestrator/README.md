@@ -1,7 +1,10 @@
 # HER Orchestrator
 
-Multi-agent pipelines driven from a chat. The `her` CLI is for the agent, not
-for Sofia.
+Multi-step work run from the chat, superpowers-style, with HER skills. The chat
+session is the controller: it grills Sofia, writes a plan, and dispatches one
+fresh subagent per step, plus a fresh reviewer after every writing step. The
+`her` CLI is the controller's ledger and guard rails, not something Sofia
+types. See `DESIGN.md` for the decisions behind it.
 
 ## Install
 
@@ -9,7 +12,8 @@ for Sofia.
 uv tool install -e ~/HER/orchestrator
 ```
 
-For Cursor, install the skill as `her-her`:
+For Cursor, link the skills (`her-her` and the rest) and the subagents
+(`her-implementer`, `her-reader`, `her-reviewer`):
 
 ```bash
 ~/HER/orchestrator/scripts/install-cursor-skills.sh
@@ -18,56 +22,59 @@ For Cursor, install the skill as `her-her`:
 ## How it is used
 
 Sofia types `/her <what to do>` in Claude Code (skill `her:her`) or in
-cursor-agent (skill `her-her`). The chat agent does the rest.
+cursor-agent (skill `her-her`). The chat does the rest:
 
-1. `her new` creates the run from the request (stdin heredoc).
-2. `her guide` gives the agent the skill catalog and plan rules.
-3. The agent reads the repos and grills Sofia in the chat, then writes
-   `decisions.md`.
-4. The agent writes `plan.json` and runs `her check` until it passes, then
-   shows Sofia the plan and the missing skills.
-5. After approval `her start` runs the steps detached and opens a live
-   dashboard in a new Ghostty window.
-
-## Dashboard keys
-
-- `[up/down]` pick a step
-- `[enter]` full log of the step
-- `[q]` close the dashboard, the run continues
+1. `her new` creates the run, `her guide` gives the rules and the flow.
+2. The controller reads the repos (and the Kineloop card, if any), grills
+   Sofia, writes `decisions.md` and `plan.json`, and runs `her check`.
+3. Sofia approves in the chat, the controller runs `her approve`.
+4. Loop: `her next` lists ready steps, `her begin` checks the branch and tree
+   and prints the brief, a fresh subagent does the step, `her finish` stores
+   its report, a fresh reviewer checks writing steps and `her review` settles
+   them. Blocked steps go back to Sofia in the chat.
+5. `her summary` writes the summary. With a card, the controller comments it
+   on Kineloop.
 
 ## Run folder layout
 
-Runs live in `~/.her/runs/<id>/`:
+Runs live in `~/.her/runs/<id>/` (or `$HER_HOME/runs/<id>/`):
 
 ```
-request.md          # Original request
-decisions.md        # Decisions settled with Sofia
-plan.json           # Pipeline plan
-state.json          # Run state
-executor.log        # Executor output
+request.md                # Original request
+decisions.md              # Decisions settled with Sofia
+plan.json                 # Pipeline plan
+state.json                # Run and step state
 steps/
-  <step-id>.jsonl   # Log events from the step agent
-  <step-id>.md      # Step result
-summary.md          # Final summary
+  <step-id>.md            # Implementer report
+  <step-id>.review.md     # Last review
+  <step-id>.verdict.json  # Judge verdict
+summary.md                # Final summary
 ```
 
 ## Commands
 
 | Command | What it does |
 |---|---|
-| `her` | Banner and recent runs |
-| `her guide` | Skill catalog, allowed agents, tiers, models, plan rules and schema |
+| `her guide` | Skills, models, plan rules, the flow and the schema |
 | `her new` | Create a run from stdin, print id and path |
 | `her check <id>` | Validate `plan.json` and render it |
-| `her start <id>` | Start the run detached and open the dashboard |
-| `her exec <id>` | Internal: the detached executor |
-| `her watch <id>` | Reopen the dashboard |
-| `her stop <id>` | Stop a running run |
+| `her approve <id>` | Record Sofia's approval |
+| `her next <id>` | Ready and open steps as JSON |
+| `her begin <id> <step> [--note]` | Pre-flight the step and print its brief |
+| `her finish <id> <step> <STATUS>` | Store the implementer report from stdin |
+| `her review-brief <id> <step>` | Print the reviewer brief |
+| `her review <id> <step> approve\|changes` | Store the review from stdin |
+| `her summary <id>` | Write `summary.md` |
 | `her runs` | List all runs |
 | `her status [id]` | Status of a run |
-| `her show <id> <step>` | Result of a step |
-| `her logs <id> <step>` | Log of a step |
+| `her show <id> <step>` | Report, review and verdict of a step |
 | `her config` | Show the configuration |
+
+## Tests
+
+```bash
+cd ~/HER/orchestrator && PYTHONDONTWRITEBYTECODE=1 python3 -m unittest discover -s tests -t .
+```
 
 ## Config
 

@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 Mode: adhd
 
-A hook nudges Sofia to run this once per session when context passes 75%. It never runs the handoff itself.
+A hook nudges Sofia to run this when context passes 75% (once per session) or a usage limit window passes 85% (once per window). It never runs the handoff itself.
 
 Write a plain, scannable markdown file to
 `${TMPDIR:-/tmp}/her-handoff-<yyyy-mm-dd>-<slug>.md`, slug from the topic.

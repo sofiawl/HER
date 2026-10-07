@@ -1,7 +1,7 @@
 [project]
 name = "her-orchestrator"
 version = "0.1.0"
-description = "HER terminal orchestrator: ask-her routes, grilling settles decisions, agents run the pipeline."
+description = "HER in-chat orchestrator: the chat controls, grilling settles decisions, fresh subagents run and review each step."
 requires-python = ">=3.11"
 dependencies = []
 

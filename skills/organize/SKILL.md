@@ -75,5 +75,5 @@ Model tiers and delegation rules: HER rule 6.
 |---|---|---|
 | Inventory facts per repo or top-level dir | `haiku` | One per repo, in parallel |
 | Find every reference to a name before rename (imports, config, links) | `sonnet` | One per approved row |
-| Review the naming map when it touches shared paths or remotes | `fable` | Before asking Sofia |
+| Review the naming map when it touches shared paths or remotes | `opus` | Before asking Sofia |
 | Purpose lines, findings, naming map | main | Needs the whole picture, never delegated |

@@ -87,5 +87,5 @@ Model tiers and delegation rules: HER rule 6.
 | Search the codebase for something that already does it (ladder rung 2) | `sonnet` | Before writing code |
 | Mechanical edits across many files, installs, version checks | `haiku` | Parallel by file group |
 | Multi-file change with real design choices | `opus` | One agent, gets the plan and the ladder |
-| Final review of a risky diff (auth, data, migrations, money) | `fable` | Before calling it done |
+| Final review of a risky diff (auth, data, migrations, money) | `opus` | Before calling it done |
 | Small changes | main | Most of the time |

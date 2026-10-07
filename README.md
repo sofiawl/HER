@@ -122,7 +122,7 @@ Hook wiring: `hooks/hooks.json` (portable). Script: `hooks/context-handoff-nudge
 
 ### 4. Model table (Cursor vs Claude Code)
 
-`rules/RULES.md` rule 6 maps HER tiers (`haiku` / `sonnet` / `opus` / `fable`) to **Cursor** `model` slugs (`composer-2.5-fast`, `claude-sonnet-5-5-high`, …).
+`rules/RULES.md` rule 6 maps HER tiers (`haiku` / `sonnet` / `opus`) to **Cursor** `model` slugs (`composer-2.5-fast`, `claude-sonnet-5-5-high`, …).
 
 - On **Cursor**: keep or edit the slug column to match models available on that account.
 - On **Claude Code only**: replace the Cursor slug column with whatever your Task / subagent API accepts (often bare `haiku`, `sonnet`, `opus`), or drop the slug column and keep tier names only.

@@ -46,7 +46,7 @@ You don't need to remember every HER skill, ask this one instead.
 - `/her:organize`: purpose taxonomy for repos, folders and names (not a refactor).
 
 **orchestrate** (adhd)
-- `/her:her`: `/her <what to do>` runs the HER orchestrator from this chat (plans the pipeline, grills you here, then the CLI runs the steps detached with a live dashboard).
+- `/her:her`: `/her <what to do>` runs the HER orchestrator from this chat (grills you here, writes a plan, then runs each step as a fresh subagent with a reviewer, in this chat).
 
 **her** (adhd)
 - `/her:ask-her`: this router.
