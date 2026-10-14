@@ -15,15 +15,18 @@ Pick the job from the argument. No argument: a plan or idea in the conversation 
 ## The stack
 
 ```
-main <- feat/<ID>_<slug>            feat: the umbrella, bottom of the stack
-          <- proposal/<ID>_<slug>   proposal: one slice of the feature, integration branch
-               <- sub 1 <- sub 2 <- sub 3 ...   subs: the reviewable pieces
+main <- feat/<ID>_<slug>                 feat: the umbrella, one empty commit
+          <- proposal/<ID>_<slug>        proposal: one slice, one empty commit
+               <- sub/<ID>_<slug> <- sub/<ID>_<slug> ...   subs: all the code
 ```
 
-- **feat**: the whole feature. Targets `main`. Almost no code, mostly the why and the future scope. A feature can have several proposals over time.
-- **proposal**: one part of the feature that ships as a unit. Targets the feat branch. Holds the merge-order table and the graveyard. Review happens on its subs; the proposal gets a final look once all subs are in.
-- **sub**: one PR, at most 750 changed lines, independently testable, tests included. Sub 1 targets the proposal, each next sub targets the previous one. Merged in order.
+- **feat**: the whole feature. Targets `main`. Exactly one empty commit (`git commit --allow-empty -m "chore: open <slug> feature branch"`), no code. The PR body holds the why and the future scope. A feature can have several proposals over time.
+- **proposal**: one part of the feature that ships as a unit. Targets the feat branch. Exactly one empty commit on top of feat, no code. Holds the merge-order table and the graveyard. Review happens on its subs; the proposal gets a final look once all subs are in.
+- **sub**: branch `sub/<ID>_<slug>`, never `feat/`. One PR, at most 750 changed lines, independently testable, tests included. Sub 1 targets the proposal, each next sub targets the previous one. Merged in order. Every line of code lives in a sub.
 - **single**: a PR outside any stack (bug fix, small refactor). Same 750 limit.
+- **Cards:** feat carries the umbrella card, proposal and its subs carry the slice card (e.g. `feat/ML-146_naiosh_automation` <- `proposal/ML-184_naiosh_automation_core` <- `sub/ML-184_naiosh_contracts`).
+- **Cross-repo feature:** the same `feat/<umbrella>_<slug>` branch and PR in each repo, one proposal per repo under that repo's slice card, and each feat and proposal PR links its twin in the other repo.
+- **Fixing a wrong layout:** rebuild it (new empty feat and proposal commits, rebase the subs onto them with `--update-refs`), check every new sub's tree matches the old branch, open the new PRs bottom-up, then close each old PR with a comment naming its replacement. Never delete the old branches without Sofia's yes.
 
 Branch names, commit messages and ticket URLs: HER rule 9.
 
@@ -52,11 +55,12 @@ Branch names, commit messages and ticket URLs: HER rule 9.
    - No table (or commits landed after it): run the thin gate now. Project tests plus the lint/types checks CI runs (read CI config, Makefile, package scripts), whole target, read exit code and counts. No worktree, no before/after.
    - Full `/her:judge` only if Sofia asks; suggest it when the sub is risky or perf.
    - Gate fails: report real numbers, claim stays out, fix goes back to `/her:lazy`.
-4. **Draft** with TEMPLATE.md for the PR level, in the voice of VOICE.md. Language: the language of the repo's recent PRs, English by default. Sub bodies stay direct and short; skip `Things worth knowing` unless TEMPLATE.md's bar is met. Package diagrams go on the proposal (ask Sofia if unsure).
+4. **Draft** with TEMPLATE.md for the PR level, in the voice of VOICE.md. **kinebot-pdi exception:** when the repo has `.github/pull_request_template.md` containing "Validation Performed" and "Reviewer Context", structure comes from `kinebot-pdi.md` and that repo template, not TEMPLATE.md. VOICE.md voice rules still apply, except where `kinebot-pdi.md` differs (no pasted author QA output, no `N/A`, no diff stats in the body). Language: the language of the repo's recent PRs, English by default. Sub bodies stay direct and short; skip `Things worth knowing` unless TEMPLATE.md's bar is met. Package diagrams go on the proposal (ask Sofia if unsure).
 5. **Never invent** screenshots, Figma links, issue IDs or PR numbers. Leave a placeholder like `[screenshot: updated_* fields in the Bruno response]` and list every placeholder for Sofia at the end. The GIF section stays empty, Sofia always picks it herself.
 6. **Never put local-only material in the PR body.** No `.scratch/` paths, no uncommitted specs, no local QA records, no "files on my disk" references. Related links must open for a reviewer on a fresh clone or on GitHub.
 7. **Save** to `.scratch/<feature-slug>/prs/<level>-<ID>.md` (or `.scratch/prs/<branch>.md` without a plan) and show it. The save path is agent-local; it is not mentioned inside the PR text.
 8. **Open** only after Sofia says yes: `gh pr create --base <base> --title "<title>" --body-file <file>`, draft if she asks. Never push or open without her yes.
+9. **Sofia never reviews or merges her own PRs** (HER rule 10). After open, hand off to a **teammate reviewer**: suggest who should review, add them on GitHub if Sofia asks, and put QA steps in the PR for **them** to run on the integrated branch. Never run `gh pr merge`, never `gh pr review --approve`, never merge the stack bottom-up for Sofia. Sub-PRs use label `evidence-skipped`; proposal/feat PRs need evidence from the reviewer, not from Sofia self-QA as approval.
 
 Title: see TEMPLATE.md Titles. Defaults: `feat: <ID> - <summary>`, `proposal: <ID> - <summary>`, `sub: <ID> - <summary>`. Lowercase type. Subs are never titled `feat:`.
 
@@ -82,5 +86,5 @@ Model tiers and delegation rules: HER rule 6.
 |---|---|---|
 | Size counts (`git diff --shortstat`), branch creation, stack table updates | `haiku` | Parallel per PR |
 | Map the changed files and behaviors, gather test commands and QA steps, run the QA | `sonnet` | Parallel per PR |
-| Write each PR description from TEMPLATE.md and VOICE.md | `opus` | One agent per PR, in parallel, each gets VOICE.md and TEMPLATE.md in full |
+| Write each PR description from TEMPLATE.md and VOICE.md (`kinebot-pdi.md` instead of TEMPLATE.md in kinebot-pdi) | `opus` | One agent per PR, in parallel, each gets VOICE.md and the structure file in full |
 | Review the stack split and each final diff, then open the PR after Sofia's yes | `opus` | Last, one PR at a time |
