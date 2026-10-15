@@ -1,6 +1,6 @@
 # HER
 
-My personal agent kit for coding assistants: **16 skills**, always-on rules, optional ai-memory, and an orchestrator that works no matter which model is on the other end. HER does not belong to Anthropic or Claude Code. Skills talk in **tiers** (`haiku`, `sonnet`, `opus`); your harness maps those to whatever models you have (Claude, GPT, Gemini, Grok, Composer, …).
+My personal agent kit for coding assistants: **17 skills**, always-on rules, optional ai-memory, and an orchestrator that works no matter which model is on the other end. HER does not belong to Anthropic or Claude Code. Skills talk in **tiers** (`haiku`, `sonnet`, `opus`); your harness maps those to whatever models you have (Claude, GPT, Gemini, Grok, Composer, …).
 
 Claude Code gets a first-class **plugin** (`her@her`, skills as `/her:<name>`). **Cursor** gets the same skills, orchestrator agents, and rules via one install script. The portable core is just files in this repo.
 
@@ -17,7 +17,10 @@ This is **opinionated and machine-local**. It names me, my Obsidian vault, Kineb
 | Orchestrator | `orchestrator/` | `her` CLI: ledger and guard rails; plans set `host` to `claude` or `cursor` |
 | PR author voice | `skills/to-pr/VOICE.md`, `TEMPLATE.md` | How my PR descriptions sound |
 | PR review kit | `skills/pr-review/references/pr-review.md`, `COMMENT-VOICE.md` | GitHub review procedure and inline comment voice |
+| PR feedback kit | `skills/address-review/references/address-review.md`, `REPLY-VOICE.md` | Triage review threads on my PR; one-line replies |
 | Report kit | `skills/report/*` | Kinebot LaTeX report pipeline |
+| Humanizer | `skills/humanizer/PASS.md` | Voice pass inside writing skills (PR, report, Kineloop, review text); not a separate skill |
+| Cursor subagent models | `skills/MODELS-CURSOR.md` | Allowlist + job → slug for Task delegation |
 | Credits | `NOTICE.md` | Upstream MIT sources |
 
 Talking modes (per skill): **professor**, **caveman**, **adhd**. Session toggles: `/her:caveman`, `/her:adhd` (say `normal mode` to clear).
@@ -44,7 +47,7 @@ Re-run after you edit `rules/RULES.md` or any skill. Writes `~/.cursor/rules/her
 
 Under the orchestrator, `lazy`, `judge`, and `to-pr` can run **headless** (decisions come from the run's `decisions.md`, not live quizzes).
 
-## Skills (16)
+## Skills (17)
 
 | Group | Skill | Mode | What it does |
 |---|---|---|---|
@@ -57,7 +60,8 @@ Under the orchestrator, `lazy`, `judge`, and `to-pr` can run **headless** (decis
 | produce code | `/her:lazy` | caveman | Minimum code that works |
 | produce code | `/her:judge` | caveman | Metrics before and after, verification gate |
 | produce code | `/her:to-pr` | caveman | PR stack plan and write (thin self-verify on write) |
-| produce code | `/her:pr-review` | adhd | GitHub PR review from a worktree; inline comments (`COMMENT-VOICE.md`); not Kineloop |
+| review | `/her:pr-review` | adhd | GitHub PR review from a worktree; inline comments (`COMMENT-VOICE.md`); not Kineloop |
+| produce code | `/her:address-review` | caveman | Open review threads on my PR; fix, one commit each, push, one-line reply (`REPLY-VOICE.md`) |
 | optimization | `/her:caveman` | caveman | Terse mode toggle |
 | unbloat | `/her:adhd` | adhd | Next-action-first mode toggle |
 | unbloat | `/her:handoff` | adhd | Emergency compact of this chat (nudge + HER next steps); optional publish to ai-memory |
@@ -76,6 +80,7 @@ Not sure which skill fits: `/her:ask-her`.
 - **Learning:** `/her:teach` for concepts worth keeping.
 - **Research:** `/her:research` (pick mode: sources, discourse, or spike); Kinebot write-up → `/her:report` when the research folder is ready.
 - **Review a PR:** `/her:pr-review <number>` (GitHub only; log on Kineloop yourself if the team expects it).
+- **Answer feedback on my PR:** `/her:address-review <number>` (or current branch).
 - **Context overload:** `/her:handoff` (this thread); `/her:caveman`, `/her:adhd`.
 - **Cross-session memory:** `/her:memory install` once; hooks capture project work. Use `/her:handoff` when nudged or before you lose the thread.
 
@@ -111,7 +116,7 @@ New session so hooks and skill text reload.
 ~/HER/orchestrator/scripts/install-cursor-skills.sh
 ```
 
-Skills show up as `her-<name>` (e.g. `her-lazy`, `her-pr-review`). Orchestrator steps use `her-implementer`, `her-reader`, `her-reviewer`. Model slugs for rule 6 live in `rules/RULES.md`; defaults and overrides in `her config` / `~/.her/config.toml`.
+Skills show up as `her-<name>` (e.g. `her-lazy`, `her-pr-review`, `her-address-review`). Orchestrator steps use `her-implementer`, `her-reader`, `her-reviewer`. Model slugs for rule 6 live in `rules/RULES.md`; defaults and overrides in `her config` / `~/.her/config.toml`.
 
 Prefer this repo over a stale plugin cache (`~/.claude/plugins/cache/her/her/<version>/`).
 
@@ -213,7 +218,7 @@ Loaded from `rules/RULES.md` at SessionStart:
 5. Nudge unused HER skills with `HER fit: /her:<name>`.
 6. Delegate to the right model tier / Cursor slug.
 7. Autolearn: on behavior corrections, propose a patch and ask before writing.
-8. Uncertain decisions → suggest or auto-fire `/her:grilling` (plan-code flows include `pr-review`; see rule text).
+8. Uncertain decisions → suggest or auto-fire `/her:grilling` (plan-code flows include `pr-review` and `address-review`; see rule text).
 9. Commits, branches, Conventional Commits, Kineloop URLs and pt-BR card text (see rule text).
 
 ## Layout
@@ -226,12 +231,12 @@ HER/
   orchestrator/                 # her CLI, cursor-agents/, tests
   skills/
     adhd/ ask-her/ caveman/ debate/ grill-me/ grilling/ handoff/ her/
-    judge/ lazy/ memory/ pr-review/ report/ research/ teach/ to-pr/
+    address-review/ judge/ lazy/ memory/ pr-review/ report/ research/ teach/ to-pr/
   NOTICE.md
   README.md
 ```
 
-Companion files per skill (examples): `to-pr/VOICE.md`, `pr-review/references/pr-review.md`, `research/LOGIC.md`, `memory/BOUNDARIES.md`, `judge/VERIFY.md`.
+Companion files per skill (examples): `to-pr/VOICE.md`, `pr-review/references/pr-review.md`, `address-review/REPLY-VOICE.md`, `research/LOGIC.md`, `memory/BOUNDARIES.md`, `judge/VERIFY.md`.
 
 ## Infra (not skills except memory)
 

@@ -70,8 +70,11 @@ Repeat until `her next <id>` prints `"finished": true`.
    pasted verbatim. Nothing else from this chat goes in.
    - Claude Code: the `Agent` tool, `model` set to the step tier
      (`haiku`, `sonnet`, `opus`).
-   - Cursor: the `her-implementer` subagent, or `her-reader` when
-     `readonly` is true, naming the step model.
+   - Cursor: `Task` with `subagent_type` `generalPurpose` (or `explore` when
+     read-only), `model` set to the step slug from `her begin`, prompt = brief
+     verbatim. Optionally prefix the prompt with the text from
+     `orchestrator/cursor-agents/her-implementer.md` or `her-reader.md`.
+     Review: same with `her-reviewer.md` and tier `opus`.
 4. Pipe its reply to `her finish <id> <sid> <STATUS>` with the status from its
    last line (`DONE`, `DONE_WITH_CONCERNS`, `NEEDS_CONTEXT`, `BLOCKED`). Use
    `FAILED` when it crashed or ended without a status.
@@ -92,8 +95,10 @@ Repeat until `her next <id>` prints `"finished": true`.
 
 Run `her summary <id>` and report in chat: what each step did, the judge
 verdicts, PR links, open questions, missing skills. With a card, comment the
-summary on it (`kineloop_add_issue_comment`) and move it to review when PRs are
-open.
+summary on it (`kineloop_add_issue_comment`) after `../humanizer/PASS.md`
+channel `kineloop-comment`, and move it to review when PRs are open. Any card
+title, description, or document HER creates or edits on Kineloop: `kineloop-card`
+pass before post. Name **who should review** (never Sofia on her own PRs). Do not merge the stack (HER rule 10).
 
 ## Later
 
@@ -102,7 +107,7 @@ verdict. `her config` shows the tier to model mapping.
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|

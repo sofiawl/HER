@@ -112,7 +112,7 @@ If MCP is not in this session, skip publish and say the tmp handoff path only.
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|

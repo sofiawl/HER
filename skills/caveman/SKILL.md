@@ -49,6 +49,6 @@ rule 4 (explain the key decision) becomes one terse "why" line, not a lecture.
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 None. This skill only shapes replies. Subagent prompts are never written in caveman: they need full sentences to be unambiguous.

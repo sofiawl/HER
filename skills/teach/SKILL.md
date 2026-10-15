@@ -47,7 +47,7 @@ If she asks for a review later, quiz her from that file instead of teaching it a
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|

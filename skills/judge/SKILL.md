@@ -80,11 +80,11 @@ Write the verdict JSON to the path given in the prompt: `{"verdict": "ship|fix|n
 
 ## Next
 
-Verdict ship: suggest `/her:to-pr`, and pass the table to it. Otherwise: list fixes, suggest `/her:lazy` for them, rerun judge.
+Verdict ship: suggest `/her:to-pr`, and pass the table to it. Otherwise: list fixes, suggest `/her:lazy` for them, rerun judge. Never treat judge as permission for Sofia to self-merge (HER rule 10); a teammate merges after review and QA on the integration branch.
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|

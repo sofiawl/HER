@@ -60,6 +60,7 @@ Non-trivial logic (branch, loop, parser, math, money, date, security path) gets 
 ## Commit and self-check
 
 - Commit along the way: one conventional commit per logical change, following HER rule 9, on the current branch. Run by the HER orchestrator: never create or switch branches, never push.
+- Never merge PRs or approve PRs on GitHub for Sofia (HER rule 10). Implementation stops at pushed commits and open PRs; a teammate reviews and merges.
 - Before finishing, run the repo's tests and the lint/type checks CI runs (read CI config, Makefile, package scripts). Fix failures you caused. Cannot fix: end the reply with `BLOCKED: <why>`.
 
 ## Output
@@ -80,7 +81,7 @@ Working from a sub plan (`.scratch/<feature>/subs/NN-*.md`): tick its acceptance
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|

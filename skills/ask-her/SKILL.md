@@ -35,6 +35,7 @@ You don't need to remember every HER skill, ask this one instead.
 - `/her:judge`: picks and measures the metrics that matter, before vs after, verification gate.
 - `/her:to-pr`: plans the PR stack (feat, proposal, subs of at most 750 changed lines) and writes each PR in Sofia's template and voice (write self-verifies thin).
 - `/her:pr-review`: GitHub PR review from an isolated worktree, inline comments in Sofia's review voice.
+- `/her:address-review`: triage open review threads on her PR, one-line replies, one commit per fix, push.
 
 **optimization** (caveman)
 - `/her:caveman`: terse mode toggle.
@@ -62,6 +63,7 @@ Infra without a skill, never suggest as a fit: pxpipe, fast-jev-compaction (inst
 - **Unknowns**: `/her:research` (sources mode), or `discourse` / `spike` when that fits.
 - **Writing up research**: `/her:report` once experiments in a kinebot-research folder are done.
 - **Review someone else's PR**: `/her:pr-review <number>`.
+- **Answer feedback on her PR**: `/her:address-review <number>` (or current branch PR).
 - **Context overload**: `/her:handoff` for this thread; `/her:caveman` or `/her:adhd` for reply shape.
 - **Cross-session memory**: `/her:memory install` once; hooks capture project work.
 
@@ -76,6 +78,6 @@ Infra without a skill, never suggest as a fit: pxpipe, fast-jev-compaction (inst
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 None. Routing needs the conversation and is one step. The chosen skill decides its own subagents.

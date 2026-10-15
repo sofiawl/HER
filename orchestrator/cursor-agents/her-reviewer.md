@@ -1,7 +1,7 @@
 ---
 name: her-reviewer
 description: HER step reviewer. Dispatched only by the HER controller with a brief from `her review-brief`. Checks one step against its task, then for quality. Never edits.
-model: claude-opus-5-thinking-high
+model: claude-opus-5-5-medium
 readonly: true
 ---
 

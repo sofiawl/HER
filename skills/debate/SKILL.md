@@ -80,7 +80,7 @@ If the decision needs a small diagram, add a Mermaid block in the decision recor
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|

@@ -19,27 +19,33 @@ DEFAULT_MODELS = {
     "cursor": {
         "haiku": [
             "composer-2.5-fast",
-            "gemini-3.8-flash-high",
+            "gemini-4-argon-medium",
             "grok-4.7-high-fast",
             "cursor-grok-4.6-high-fast",
+            "muse-spark-1.3-high",
         ],
-        "sonnet": ["claude-sonnet-5-5-high", "gpt-5.6-sol-medium"],
-        "opus": ["claude-opus-5-thinking-high", "claude-opus-5-5-medium"],
+        "sonnet": [
+            "grok-4.7-high-fast",
+            "cursor-grok-4.6-high-fast",
+            "claude-sonnet-5-5-high",
+            "gpt-5.6-sol-medium",
+        ],
+        "opus": ["claude-opus-5-5-medium"],
     },
 }
 
 DEFAULT_MODEL_NOTES = {
     "claude/claude-haiku-4-5-20251001": {"strengths": "mechanical edits, grep, inventory, known commands", "relative_cost": 1},
     "claude/claude-sonnet-5-5": {"strengths": "code exploration, routine implementation, test runs", "relative_cost": 2},
-    "claude/claude-opus-5-5": {"strengths": "multi-file design, long careful writing, synthesis, risky decisions, final review, verdicts", "relative_cost": 4},
+    "claude/claude-opus-5-5": {"strengths": "multi-file design, synthesis, risky decisions, orchestrator review, PR review verdicts", "relative_cost": 4},
     "cursor/composer-2.5-fast": {"strengths": "fast mechanical edits inside a repo", "relative_cost": 1},
-    "cursor/gemini-3.8-flash-high": {"strengths": "cheap reading, summaries, large context scans", "relative_cost": 1},
-    "cursor/grok-4.7-high-fast": {"strengths": "quick mechanical chores, shell-heavy work", "relative_cost": 1},
-    "cursor/cursor-grok-4.6-high-fast": {"strengths": "quick mechanical chores, shell-heavy work", "relative_cost": 1},
-    "cursor/claude-sonnet-5-5-high": {"strengths": "code exploration, routine implementation", "relative_cost": 2},
-    "cursor/gpt-5.6-sol-medium": {"strengths": "routine implementation, debugging, test fixes", "relative_cost": 2},
-    "cursor/claude-opus-5-thinking-high": {"strengths": "deep multi-file design with extended thinking, final review, verdicts", "relative_cost": 4},
-    "cursor/claude-opus-5-5-medium": {"strengths": "multi-file design, long writing", "relative_cost": 4},
+    "cursor/gemini-4-argon-medium": {"strengths": "cheap reading, summaries, large context scans", "relative_cost": 1},
+    "cursor/grok-4.7-high-fast": {"strengths": "default implement/QA: gh, git, tests, fixes, code facts", "relative_cost": 2},
+    "cursor/cursor-grok-4.6-high-fast": {"strengths": "fallback implement/QA", "relative_cost": 2},
+    "cursor/claude-sonnet-5-5-high": {"strengths": "code exploration, routine implementation, Sofia voice (PR, report, Kineloop)", "relative_cost": 2},
+    "cursor/gpt-5.6-sol-medium": {"strengths": "routine implementation, debugging, test fixes, second-pass number check", "relative_cost": 2},
+    "cursor/muse-spark-1.3-high": {"strengths": "cheap mechanical chores", "relative_cost": 1},
+    "cursor/claude-opus-5-5-medium": {"strengths": "orchestrator step review, high judgment, synthesis, risky verdicts", "relative_cost": 4},
 }
 
 INTERACTIVE_SKILLS = {

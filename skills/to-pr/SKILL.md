@@ -55,12 +55,13 @@ Branch names, commit messages and ticket URLs: HER rule 9.
    - No table (or commits landed after it): run the thin gate now. Project tests plus the lint/types checks CI runs (read CI config, Makefile, package scripts), whole target, read exit code and counts. No worktree, no before/after.
    - Full `/her:judge` only if Sofia asks; suggest it when the sub is risky or perf.
    - Gate fails: report real numbers, claim stays out, fix goes back to `/her:lazy`.
-4. **Draft** with TEMPLATE.md for the PR level, in the voice of VOICE.md. **kinebot-pdi exception:** when the repo has `.github/pull_request_template.md` containing "Validation Performed" and "Reviewer Context", structure comes from `kinebot-pdi.md` and that repo template, not TEMPLATE.md. VOICE.md voice rules still apply, except where `kinebot-pdi.md` differs (no pasted author QA output, no `N/A`, no diff stats in the body). Language: the language of the repo's recent PRs, English by default. Sub bodies stay direct and short; skip `Things worth knowing` unless TEMPLATE.md's bar is met. Package diagrams go on the proposal (ask Sofia if unsure).
-5. **Never invent** screenshots, Figma links, issue IDs or PR numbers. Leave a placeholder like `[screenshot: updated_* fields in the Bruno response]` and list every placeholder for Sofia at the end. The GIF section stays empty, Sofia always picks it herself.
-6. **Never put local-only material in the PR body.** No `.scratch/` paths, no uncommitted specs, no local QA records, no "files on my disk" references. Related links must open for a reviewer on a fresh clone or on GitHub.
-7. **Save** to `.scratch/<feature-slug>/prs/<level>-<ID>.md` (or `.scratch/prs/<branch>.md` without a plan) and show it. The save path is agent-local; it is not mentioned inside the PR text.
-8. **Open** only after Sofia says yes: `gh pr create --base <base> --title "<title>" --body-file <file>`, draft if she asks. Never push or open without her yes.
-9. **Sofia never reviews or merges her own PRs** (HER rule 10). After open, hand off to a **teammate reviewer**: suggest who should review, add them on GitHub if Sofia asks, and put QA steps in the PR for **them** to run on the integrated branch. Never run `gh pr merge`, never `gh pr review --approve`, never merge the stack bottom-up for Sofia. Sub-PRs use label `evidence-skipped`; proposal/feat PRs need evidence from the reviewer, not from Sofia self-QA as approval.
+4. **Draft** with TEMPLATE.md for the PR level (facts, structure, QA commands). **kinebot-pdi exception:** when the repo has `.github/pull_request_template.md` containing "Validation Performed" and "Reviewer Context", structure comes from `kinebot-pdi.md` and that repo template, not TEMPLATE.md, except where `kinebot-pdi.md` differs (no pasted author QA output, no `N/A`, no diff stats in the body). Language: the language of the repo's recent PRs, English by default. Sub bodies stay direct and short; skip `Things worth knowing` unless TEMPLATE.md's bar is met. Package diagrams go on the proposal (ask Sofia if unsure). Rough prose is fine here; voice comes in step 5.
+5. **Humanizer.** Run `../humanizer/PASS.md` channel `pr-body` on the full body. VOICE.md is loaded through that channel. Same pass on `update` before `gh pr edit`.
+6. **Never invent** screenshots, Figma links, issue IDs or PR numbers. Leave a placeholder like `[screenshot: updated_* fields in the Bruno response]` and list every placeholder for Sofia at the end. The GIF section stays empty, Sofia always picks it herself.
+7. **Never put local-only material in the PR body.** No `.scratch/` paths, no uncommitted specs, no local QA records, no "files on my disk" references. Related links must open for a reviewer on a fresh clone or on GitHub.
+8. **Save** to `.scratch/<feature-slug>/prs/<level>-<ID>.md` (or `.scratch/prs/<branch>.md` without a plan) and show it. The save path is agent-local; it is not mentioned inside the PR text.
+9. **Open** only after Sofia says yes: `gh pr create --base <base> --title "<title>" --body-file <file>`, draft if she asks. Never push or open without her yes.
+10. **Sofia never reviews or merges her own PRs** (HER rule 10). After open, hand off to a **teammate reviewer**: suggest who should review, add them on GitHub if Sofia asks, and put QA steps in the PR for **them** to run on the integrated branch. Never run `gh pr merge`, never `gh pr review --approve`, never merge the stack bottom-up for Sofia. Sub-PRs use label `evidence-skipped`; proposal/feat PRs need evidence from the reviewer, not from Sofia self-QA as approval.
 
 Title: see TEMPLATE.md Titles. Defaults: `feat: <ID> - <summary>`, `proposal: <ID> - <summary>`, `sub: <ID> - <summary>`. Lowercase type. Subs are never titled `feat:`.
 
@@ -80,11 +81,11 @@ Decision line: one terse line on the main slicing or framing choice.
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|
 | Size counts (`git diff --shortstat`), branch creation, stack table updates | `haiku` | Parallel per PR |
 | Map the changed files and behaviors, gather test commands and QA steps, run the QA | `sonnet` | Parallel per PR |
-| Write each PR description from TEMPLATE.md and VOICE.md (`kinebot-pdi.md` instead of TEMPLATE.md in kinebot-pdi) | `opus` | One agent per PR, in parallel, each gets VOICE.md and the structure file in full |
-| Review the stack split and each final diff, then open the PR after Sofia's yes | `opus` | Last, one PR at a time |
+| Draft + humanizer pass each PR (`PASS.md` `pr-body`, TEMPLATE.md or `kinebot-pdi.md`) | `sonnet` | One agent per PR, in parallel; structure file + `../humanizer/*` in the prompt |
+| Review the stack split and each final diff, then open the PR after Sofia's yes | `opus` | Last, one PR at a time; high judgment on slice and claims |

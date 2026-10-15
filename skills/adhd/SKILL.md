@@ -48,6 +48,6 @@ Writing check: still close every reply with the HER writing check line as usual.
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 None. This skill only shapes replies; when an agent's output goes straight to Sofia, pass the adhd shape in its prompt.

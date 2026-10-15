@@ -28,7 +28,8 @@ Reference files: `RESULTS.md` (finding and ranking results), `STYLE.md` (LaTeX a
 4. **Approval gate.** `RESULTS.md` section 6. Stop and wait for Sofia's OK. Her edits to the ledger win.
 5. **Outline.** Map ledger rows to sections per `STYLE.md`, with the planned tables and figures. Show it in a few lines; continue unless she objects.
 6. **Write.** New report: create `relatorios/<slug>/` from `SKELETON.tex` and copy `latexmkrc`. Existing report: edit in place, keep her text unless it contradicts the ledger, bump `\reportref`. Copy needed images from the research folder into `images/` with snake_case names. Every number typed into the `.tex` must match a ledger row.
-7. **Compile and check.** From the report folder: `latexmk -pdf relatorio-<slug>.tex`. Fix errors. Then check the log and report:
+7. **Humanizer.** Run `../humanizer/PASS.md` channel `report-prose` on the prose lines in the `.tex` (sentence lines only; leave commands, labels, and environments untouched).
+8. **Compile and check.** From the report folder: `latexmk -pdf relatorio-<slug>.tex`. Fix errors. Then check the log and report:
    - `grep -n "undefined\|Missing\|multiply defined" relatorio-<slug>.log`
    - overfull boxes above 10pt (`grep -n "Overfull" ...`), fix the ones in body text
    - every `\label` referenced, every file in `images/` included
@@ -38,8 +39,8 @@ Reference files: `RESULTS.md` (finding and ranking results), `STYLE.md` (LaTeX a
    - no run IDs: `grep -nE '[0-9]{8}T[0-9]{6}Z' relatorio-<slug>.tex` returns nothing
    - no near-empty pages: `n=$(pdfinfo relatorio-<slug>.pdf | awk '/Pages/{print $2}'); for p in $(seq 3 $((n-1))); do c=$(pdftotext -f $p -l $p -layout relatorio-<slug>.pdf - | grep -cv '^\s*$'); [ $c -lt 18 ] && echo "page $p: $c lines"; done` prints nothing. A page with a figure can have few text lines, so render any flagged page (`pdftoppm -f $p -l $p -r 40 -png`) and look at it before accepting it
    - no long prose lines: `awk 'length>110' relatorio-<slug>.tex` shows only table rows, URLs or plot code
-8. **Independent number check.** Launch one `sonnet` subagent that did not write the report. Give it the `.tex` and the ledger path, ask it to re-read each number from its source and list mismatches. Fix them. Per `VERIFY.md`, do not report "done" on the writer's word.
-9. **Hand back.** Path to the `.tex` and PDF, page count, the headline sentence, open points, anything left as placeholder. Do not commit unless she asks.
+9. **Independent number check.** Launch one `sonnet` subagent that did not write the report. Give it the `.tex` and the ledger path, ask it to re-read each number from its source and list mismatches. Fix them. Per `VERIFY.md`, do not report "done" on the writer's word.
+10. **Hand back.** Path to the `.tex` and PDF, page count, the headline sentence, open points, anything left as placeholder. Do not commit unless she asks.
 
 ## Hard rules
 
@@ -60,12 +61,12 @@ Reference files: `RESULTS.md` (finding and ranking results), `STYLE.md` (LaTeX a
 
 ## Subagents
 
-Model tiers and delegation rules: HER rule 6.
+Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|
 | Inventory the research folder, copy images, run latexmk, grep the log | `haiku` | Inventory in parallel per subfolder |
 | Read each result source and draft ledger rows | `sonnet` | One agent per subfolder or run, in parallel |
 | Rank and steelman the Main results | `opus` | Gets the full ledger and the purpose |
-| Write the `.tex` in pt-BR from the approved ledger and STYLE.md | `opus` | One agent |
+| Write the `.tex`, humanizer pass (`PASS.md` `report-prose`), from ledger and STYLE.md | `sonnet` | One agent |
 | Independent number check (Flow step 8) | `sonnet` | A different agent from the writer |
