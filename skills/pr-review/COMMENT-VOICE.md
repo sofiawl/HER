@@ -1,8 +1,8 @@
 # How Sofia's PR review comments sound
 
-**Two audiences.** Inline comments and the GitHub **summary review body** are for the PR author and anyone reading the thread later: only **code review** outcome (blockers, inline threads). The **chat reply to Sofia** is her control panel: verdict counts, full QA logs, what blocked in your environment, and **what she still owes** (run the PR test plan, fetch SharePoint videos, spot-check before merge). Never paste the chat report into GitHub. Never assign Sofia's follow-ups to the author on GitHub ("please run QA", "verify on kinebot videos").
+**Two audiences.** **Inline comments** on the diff are the only author-facing review text on GitHub. **Chat to Sofia** holds recap, stack-top routing, producer pass, QA logs, and **Screenshots Sofia must capture** (exact commands) when the worktree could not shoot them.
 
-Inline GitHub comments only. English. ADHD shape: **label first, finding second**. One breath.
+English. **Label first, finding second.** Producer tone: healthier system, not a second lint pass. No PR recap on GitHub.
 
 ## Shape
 
@@ -10,51 +10,40 @@ Inline GitHub comments only. English. ADHD shape: **label first, finding second*
 ISSUE: <what is wrong>. <concrete consequence>.
 ```
 
-Optional third beat (default off):
+Optional: ```suggestion``` or **Fix** only for one obvious step. **QUESTION:** one per comment when intent is unclear.
 
-- **Fix** or a ```suggestion block: only when one obvious step (typo, missing `raise_for_status`, wrong key name). Not for design or multi-line rewrites.
-- **Question**: separate **QUESTION:** comment when you cannot judge without intent; one question per comment. Do not tack a question onto **ISSUE:** unless the bug itself is ambiguous.
+Hard cap **~60 words** unless the exception below. **At most one** code block.
 
-If neither case applies, stop after the consequence.
+## Voice
 
-Hard cap **~60 words** unless the exception below applies. **At most one** code block: a ```suggestion or up to 4 lines of evidence.
-
-## Voice (same family as PR writing, tighter)
-
-- Plain, a little wry when it helps honesty ("this reads like the bot already caught it, but the dismiss was wrong"), never jokes about people.
-- Concrete: real symbols in backticks, real numbers, one command line if the result *is* the finding.
+- Plain, concrete symbols in backticks, one command line when the run *is* the finding.
 - No em dash, no en dash, no emoji (HER rule 3).
-- No narrating your process ("I read the doc", "I ran the suite"). One clause max if the run *is* the finding.
-- No restating the PR or the hunk. They have the diff.
+- No process diary. No restating the hunk.
 - Critique the code, not the author.
 
-## Labels (conventionalcomments.org, UPPERCASE)
+## Labels
 
 | Label | Use |
 |---|---|
-| **ISSUE:** | Must fix before merge (correctness, security, contract, data loss) |
-| **SUGGESTION:** | Real improvement **and** cites checklist, layer map, or objective rule; else **NITPICK:** |
-| **TODO:** | Small follow-through in this PR (missing test, rename) |
-| **NITPICK:** | Taste; author may ignore |
-| **QUESTION:** | Need intent before judging (one question per comment) |
-| **THOUGHT:** | Reflection; no action |
+| **ISSUE:** | Must fix before merge (correctness, security, contract, data loss, public unused API) |
+| **SUGGESTION:** | Layer/placement, reuse, cleanup, split PR; cite layer map or grep; stack fixes name **PR #** |
+| **TODO:** | Small follow-through in **this** PR (safe delete, wire delete) |
+| **NITPICK:** | Taste; ignore ok |
+| **QUESTION:** | Architecture intent (why this seam) |
+| **THOUGHT:** | Non-blocking cleanup or follow-up PR |
 | **PRAISE:** | Specific, rare |
-| **TECH DEBT:** | Only **kinebot-standard** repos with the tech-debt flow; on **kinebot-cosmos** use SUGGESTION or a manual Kineloop issue |
+| **TECH DEBT:** | **kinebot-standard** only with tech-debt flow |
+
+Wrong layer vs map: **SUGGESTION** default; **ISSUE** only when map is explicit and path is clearly production / `app/` with real risk.
 
 ## Exception (~150 words, two blocks max)
 
-When the claim is not verifiable from the diff alone, or you are overturning a deliberate design choice. Still no process diary.
+Overturning a deliberate design choice or evidence not in the diff. No process diary.
 
-## Summary review body (GitHub only, for the author)
+## Review submit body (GitHub API only)
 
-Write for someone who already read the PR. **≤3 lines.**
+Default **`""`**. Do not humanize. Verdict is **`event`**. `# Evidence` is a **separate** `gh pr comment`, not review `body`.
 
-- Outcome in plain words: approved, changes requested, or comment-only (no label tallies like `0 ISSUE, 1 SUGGESTION`).
-- **REQUEST_CHANGES:** one line per blocking **ISSUE** with `file:line`, or "see inline ISSUE comments". Do not repeat SUGGESTION/NITPICK text.
-- **APPROVE** / **COMMENT:** if useful, one short note such as "Non-blocking suggestions inline." Otherwise the inline threads are enough; an empty or one-word body is fine.
+## Chat report to Sofia
 
-**Never on GitHub:** PR recap, QA/test-plan homework for anyone, nudges to run the PR template steps, process diary, reviewer environment (SharePoint, missing weights, symlinks), command dumps.
-
-## Chat report to Sofia (not posted on GitHub)
-
-After submit, tell Sofia what **she** needs to steer: PR URL, verdict, counts by label, QA you ran (pass/fail, commands), what blocked in **your** environment and why, **her** follow-ups (e.g. full PR QA not covered in review, merge only after she runs steps X-Y), and one line per **ISSUE**. This is where "please run the PR QA steps" belongs, addressed to Sofia, not the author.
+PR URL; one-line change summary; stack-top and depth; verdict; label counts; producer pass; QA; **Screenshots Sofia must capture** block when needed (see `references/pr-review.md` §9); her follow-ups; one line per **ISSUE**.

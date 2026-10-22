@@ -1,8 +1,9 @@
 ---
 name: pr-review
 description: >
-  Review a GitHub pull request from an isolated worktree: repo checklists,
-  inline conventionalcomments, short ADHD-shaped comments in Sofia's voice.
+  PR review on repos with CI + ai-review: stack-aware deep pass on singles and
+  stack-top, light pass on lower subs; architecture, placement, cleanup, QA;
+  fallback checklist when automation missing; inline only (empty body).
   GitHub only, not Kineloop. Triggers: "/her:pr-review", "review this PR",
   "PR review", "gh pr review", "leave review comments on".
 argument-hint: "[PR number or URL]"
@@ -10,11 +11,11 @@ argument-hint: "[PR number or URL]"
 
 Mode: adhd
 
-Follow `references/pr-review.md` end to end. Comment voice: `COMMENT-VOICE.md`. Before posting to GitHub, run `../humanizer/PASS.md` on summary body and each inline (`pr-review-inline`).
+Follow `references/pr-review.md` end to end. Comment voice: `COMMENT-VOICE.md`. Before posting to GitHub, run `../humanizer/PASS.md` on each inline (`pr-review-inline`); review `body` stays `""`.
 
-**Audiences:** GitHub summary + inline = author (code review only: verdict, blockers, inline threads). Chat reply = Sofia (QA log, her follow-ups including PR test plan she still runs, environment blockers).
+**Audiences:** GitHub inline threads only (`event` for verdict). Chat = Sofia (recap, stack routing, producer pass, QA, screenshot command list, her follow-ups).
 
-**Next action first:** worktree → load checklist → read existing reviews → diff → **run PR QA (runnable steps)** → draft author-facing GitHub text → post → remove worktree → **chat report to Sofia**.
+**Next action first:** worktree → parse stack depth → CI + bot baseline → layer maps → QA → §6 or §7 pass → inlines → `# Evidence` via `gh` if approving → post review → force-remove worktree → chat report.
 
 Do not commit, push, or open Kineloop issues unless Sofia asks outside this skill.
 
@@ -26,8 +27,9 @@ Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|
-| Fetch PR metadata, existing reviews, diff stats | `haiku` | Before deep read |
-| Read changed files against checklist | `sonnet` | Per area or package in parallel |
-| Run runnable QA steps from PR body | `sonnet` | In worktree; return pass/fail per step |
-| Draft comments + summary | `opus` | Needs diff + QA evidence for ISSUE vs SUGGESTION |
-| Post `gh api` review | main | Needs Sofia's account; confirm before REQUEST_CHANGES if borderline |
+| Fetch PR metadata, stack links, diff stats | `haiku` | Before deep read |
+| Parse proposal merge-order table, stack-top # | `haiku` | When reviewing a sub |
+| Architecture pass (layer map, grep dup/dead code) | `sonnet` | Per area in parallel |
+| Run PR QA + deep 1–2 commands (stack-top / single only) | `sonnet` | In worktree |
+| Draft inlines + stack PR routing | `opus` | Diff + QA + bot context |
+| Post `gh api` review + `gh pr comment` evidence | main | Sofia's account |

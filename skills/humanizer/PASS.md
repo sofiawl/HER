@@ -16,7 +16,7 @@ Load `CORE.md`, the channel row from `CHANNELS.md`, and that channel's voice fil
 |---|---|
 | `/her:to-pr` write/update | `pr-body` |
 | `/her:report` write | `report-prose` |
-| `/her:pr-review` post to GitHub | `pr-review-inline` for summary body and each inline (COMMENT-VOICE caps stay) |
+| `/her:pr-review` post to GitHub | `pr-review-inline` for each inline only (review `body` empty; COMMENT-VOICE caps stay) |
 | `/her:address-review` thread reply | `pr-thread-reply` |
 | `/her:her` Kineloop card or document | `kineloop-card` |
 | `/her:her` Kineloop comment (e.g. run summary) | `kineloop-comment` |

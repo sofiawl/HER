@@ -1,8 +1,8 @@
 # Pull-request review procedure
 
-Review the PR named in the request. Post **inline GitHub comments** plus one summary review. Read `../COMMENT-VOICE.md` for how each comment is written.
+Review the PR named in the request. Post **inline GitHub comments** and submit one atomic review (`event` + empty `body`). Read `../COMMENT-VOICE.md` for how each inline is written.
 
-**GitHub only.** This skill does not write Kineloop cards. Log the review on Kineloop yourself if the team expects it.
+**GitHub only.** This skill does not write Kineloop cards.
 
 If no PR is given:
 
@@ -17,109 +17,164 @@ If that fails, ask Sofia which PR.
 Never review in the main working copy.
 
 ```
-gh pr view <PR> --json number,headRefName,baseRefName,title,url,additions,deletions
+gh pr view <PR> --json number,headRefName,baseRefName,title,url,additions,deletions,body
 git fetch origin
 git worktree add .agents/worktrees/<branch-or-PR> <headRefName>
 ```
 
-Run the whole review from that worktree. Remove it when done:
+Run the whole review from that worktree only. Do not run QA from the main checkout.
+
+**While the review runs:**
+
+- Write ephemeral artifacts (`review.json`, `/tmp/evidence-<PR>.md`, screenshots under `/tmp/pr-<PR>-evidence/`) under `/tmp/` or the main repo root, never inside the worktree path.
+- `uv sync` in the worktree is allowed; it creates a nested `.venv` there that must not survive cleanup.
+
+**Cleanup is mandatory.** Run it even when the GitHub review post fails, QA aborts, or the verdict is REQUEST_CHANGES.
 
 ```
-git worktree remove .agents/worktrees/<branch-or-PR>
+WT=.agents/worktrees/<branch-or-PR>
+git worktree remove --force "$WT" 2>/dev/null || rm -rf "$WT"
+git worktree prune
+git worktree list
 ```
 
-## 2. Repo review standard
+- Always use `--force` (or `rm -rf` the path) so an untracked `.venv` or other ignored files cannot block removal.
+- After cleanup, `git worktree list` must show no rows under `.agents/worktrees/` for this review. If one remains, delete it and report the path to Sofia in chat.
 
-Read **checklists and layer maps only** from `docs/ai-pr-review/` when present:
+## 2. Stack map and review depth
 
-| Repo | Standard |
+Parse the PR body using `../../to-pr/TEMPLATE.md` (and `../../to-pr/kinebot-pdi.md` when that repo applies). Do not guess stack position from branch prefix alone.
+
+**Stack detection**
+
+- **Related** links, merge-order table (`| Order | PR | ...`), parent **proposal** / **feat** links, and chains like `#a -> #b` in **Tests** or **QA**.
+- Open the **proposal** PR body when this PR is a **sub** and the table lives there.
+
+**Stack-top PR** = the row with the **highest `Order`** in the merge-order table (that PR number). If there is no table but the body describes a single stacked chain, stack-top = the **last** PR number in the chain.
+
+**Single PR** = no merge-order table and no stacked **Related** chain (standalone bug fix, refactor, or one-off).
+
+**Depth**
+
+| Situation | Pass |
 |---|---|
-| **kinebot-standard** | `checklist-general.md`, `frontend-layer-map.md`, `backend-layer-map.md`, `frontend-extras.md` |
-| **kinebot-cosmos** | `checklist-general.md`, `checklist-python.md` |
-| **kinebot-lambda** | No `docs/ai-pr-review/`: use repo `CLAUDE.md` |
-| **kinebot-research** or missing folder | Same files as cosmos via `gh api repos/pixfy/kinebot-cosmos/contents/docs/ai-pr-review/...`, applied with the **research** strictness below (not production bar) |
+| **Single PR** | **Deep** (§6) |
+| **Stack-top PR** | **Deep** (§6) |
+| **Lower stack PR** (not stack-top) | **Light** (§6, no extra producer commands) |
 
-Do **not** run or reuse `review_script.sh` / `prompt.md` (the AI bot machinery). This review catches what the bot misses; copying its prompt copies its blind spots.
+Record in scratch: `stack-top: #N`, `this PR: #M`, `depth: deep|light`.
 
-Detect repo from `gh pr view --json headRepository,nameWithOwner` or the PR URL. When strictness differs, **kinebot-cosmos wins** if you are unsure.
-
-## 3. Existing reviews first
+## 3. Automation: present vs fallback
 
 ```
+gh pr checks <PR>
 gh api repos/{owner}/{repo}/pulls/<number>/reviews
 gh api repos/{owner}/{repo}/pulls/<number>/comments
 ```
 
-- Do not re-flag the same issue in new words.
-- If the bot or a human raised something real and the author dismissed it wrongly, one short **ISSUE:** reinforcing it is fine.
+Identify the **ai-review** check (or the repo workflow name from `docs/ai-pr-review/README.md`) and **bot inline comments** (account from that README or workflow).
+
+**Automation present** when **either**:
+
+- the ai-review (or equivalent) check is **success** on the PR head, **or**
+- at least one **inline review comment** from the bot on this PR.
+
+**Fallback** when **both** are missing: run **§7** (full defect checklist). Do not run §6 human-only pass in fallback mode.
+
+When automation **is** present:
+
+- Do **not** run or reuse `review_script.sh` / `prompt.md`.
+- Do **not** re-flag the same bot issue in new words.
+- Do **not** duplicate Ruff/mypy/Jev convention nits unless QA or behavior proves them wrong.
+- Wrong dismiss of a real bot/human point → one short **ISSUE:** reinforcing it.
+
+**Placement maps** (§6 human pass; not the defect checklists):
+
+| Repo | Architecture / what-goes-where |
+|---|---|
+| **kinebot-standard** | `frontend-layer-map.md`, `backend-layer-map.md`, `frontend-extras.md` under `docs/ai-pr-review/` |
+| **kinebot-cosmos** | `CLAUDE.md`, layering docs, `scripts/guidelines_review/` expectations if documented |
+| **kinebot-lambda** | `CLAUDE.md` |
+| **kinebot-research** | Same map files as cosmos via API when missing locally; **research** verdict bar in §7 only applies in fallback |
+
+Detect repo from `gh pr view --json headRepository,nameWithOwner`.
 
 ## 4. Context
 
-- PR description, linked issues, `gh pr diff <PR>`.
-- If the why is missing and not obvious from the diff, that is a finding.
+- PR description, linked issues, stack links, `gh pr diff <PR>`, `git diff --stat` vs base.
+- Missing **why** when not obvious from the diff → **QUESTION:** or **ISSUE:** if merge would be blind.
 - Read surrounding code for non-trivial hunks. Never approve a block you did not read.
 
 ## 5. Run QA before you comment
 
-Use the **QA Instructions** section of the PR body (and any linked test plan). Do this in the worktree **before** drafting inline comments or submitting the review.
+Use **QA Instructions** / **QA** from the PR body. Run in the worktree **before** inlines or review submit.
 
-1. List each QA step and what it needs (deps, env vars, data, network, hardware).
-2. Run every step that can run in this environment: `uv sync` / `npm test` / docker compose / negative paths (bad URL, missing file), etc.
-3. If a step needs assets you do not have (SharePoint videos, `.env`, VPN, GPU server), check whether they already exist under the paths the QA names. Do not skip without looking.
-4. Record outcomes: command, pass/fail, one line of stderr or output when fail.
+1. List each step and what it needs (deps, env, data, network, hardware).
+2. Run every step that can run here.
+3. If assets are missing, check paths the QA names before calling it blocked.
+4. Record: command, pass/fail, one line of stderr or output on fail.
 
-**Do not post the review until QA is attempted.** Record outcomes for Sofia's chat report: commands, pass/fail, blocked steps and why (missing asset, service, weights). A blocked step in the reviewer's environment is not auto **ISSUE** on **kinebot-research** unless the PR claims QA that is impossible for humans too.
+Findings from QA trump diff-only guesses: failed QA → **ISSUE** when output is wrong; flaky infra → Sofia chat; on GitHub only for **code** the author must fix.
 
-Findings from QA trump diff-only guesses: failed QA step → **ISSUE** when output is wrong; flaky server → chat for Sofia; on GitHub only if it is a **code** finding the author must fix (not "go run the test plan").
+Visual QA steps: capture PNG/video in `/tmp/pr-<PR>-evidence/` when the environment allows (ffmpeg frame, Playwright if the repo already has it, exported UI). When capture is not possible, use **§9** screenshot block for Sofia (exact commands, not vague).
 
-**kinebot-standard** (Sofia last approver): post a separate PR comment `# Evidence` with QA commands and results before **APPROVE** (existing rule). **Other repos:** no QA log or test-plan reminders in the GitHub summary body; QA evidence and Sofia's remaining checks live in chat only.
+## 6. Human pass (automation present only)
 
-## 6. Bar
+Skip this section in **fallback** (§7). Bar: **code health improving**, producer tone (not a second lint pass).
 
-Checklist first. Bar is **code health, not perfection** (Google eng-practices): approve when the change clearly improves the system. Valid alternatives are not blockers.
+### Architecture and placement
 
-### Repo strictness
+- **Layer / seam:** Wrong folder or call direction vs layer map → **SUGGESTION** by default; **ISSUE** only when the map is explicit and the path is clearly production / `app/` with a real defect risk.
+- **Design fit:** Belongs in this repo, module, and **this PR in the stack**? Deep module vs shallow pass-through?
+- **Stack routing:** If the fix belongs in another stack PR, say so in the inline: `SUGGESTION: … (belongs in PR #<n>, stack order <k>).` Do not ask the author to fix stack-top integration in a lower sub when the body already assigns that work to a later PR.
+- **Reuse:** Grep before suggesting new helpers; duplicate of existing util → **SUGGESTION** with path.
 
-**kinebot-research** (less strict):
+### Dead weight and duplication
 
-- Scripts, notebooks, one-off experiments, docs: **ISSUE** only for clear bugs, wrong results, security, or data loss (overwrite, corrupt outputs). No test suite in the path is normal; do not block on missing unit tests if QA in the PR is runnable.
-- Robustness gaps (health check edge cases, naming in output files, cap heuristics) → **SUGGESTION** or **NITPICK** unless the consequence is silent wrong science or clobbered artifacts.
-- Thin or missing PR template: note in summary or one **SUGGESTION**, not auto **REQUEST_CHANGES**, when the diff and QA still make sense.
-- Prefer **APPROVE** or **COMMENT** when the change clearly helps the experiment and defects are non-blocking.
+- **ISSUE:** new **public** unused surface (exports, API) that will mislead the next change, **unless** a named later stack PR will wire it and the default path is noop-safe.
+- **TODO:** safe delete in this PR (imports, dead branch introduced here).
+- **SUGGESTION** / **THOUGHT:** wider cleanup out of scope.
 
-**kinebot-cosmos** (more strict):
+Stack rules: no **SUGGESTION** to wire before merge when noop-safe and a later PR owns it; scaffold params for the next corrector are not **TODO** unless CI blocks.
 
-- Apply **checklist-general** and **checklist-python** fully. `app/` and consumer paths: missing tests, error paths, async, DB, and external services are **ISSUE** or **TODO**, not optional polish.
-- Template, linked ticket, and QA must be usable; weak or missing → **REQUEST_CHANGES** before deep pass (template gate).
-- Borderline correctness or checklist defect → **ISSUE** and **REQUEST_CHANGES**, not "trust the author" **APPROVE**.
-- Size gate 750 (+100) enforced; split guidance stands.
+### Deep pass (singles and stack-top only)
 
-**kinebot-standard** and **kinebot-lambda**: default bar in this section unless the repo adds its own guide; between research and cosmos unless `CLAUDE.md` says otherwise.
+Not `/her:judge`. At most **1–2** extra commands beyond §5 QA, chosen from what the PR already documents or CI runs. Stop early; cite output in chat and in `# Evidence`, not a metric table.
 
-**Look at every changed line.** More scrutiny on auth, money, migrations, concurrency, hot paths (always; stricter verdict class on cosmos).
+Use deep to answer: happy path + one failure path proved? revert safe? wrong integration point? split needed (cosmos 750 +100 lines)?
 
-Where the checklist is silent:
+**Light pass** (lower stack): §5 QA + architecture/dead-weight rules above, **no** extra §6 deep commands.
 
-- Design / architecture
-- Correctness / edge cases / concurrency
-- Complexity (speculative generality is a smell)
-- Tests that exercise the new path
-- Naming (HER rule 2 applies to code you suggest: no comment spam in suggestions)
-- Security, performance, docs
-- AI smells: hallucinated APIs, invented config keys, ignored conventions
+Do **not** duplicate bot defect checklist items unless QA proves the bot wrong.
 
-**Size gate** (additions + deletions):
+**Size gate** (additions + deletions): cosmos 750 (+100); other team repos 1500 → **REQUEST_CHANGES** (split). >30 files → one **SUGGESTION** smell.
 
-- **kinebot-cosmos:** 750 (+100 tolerance)
-- **Other team repos:** 1500
+**Template gate:** unreadable description or QA nobody can run → **REQUEST_CHANGES** after §5 attempt.
 
-Over gate → **REQUEST_CHANGES** (split per team guide). >30 files is a one-line smell, not auto-reject.
+## 7. Fallback (automation absent)
 
-**Template gate:** ignores template, unreadable description, or QA nobody can run → **REQUEST_CHANGES** before deep pass (after you tried to run it per section 5).
+When §3 fallback triggers, read defect checklists from `docs/ai-pr-review/`:
 
-**Rejection heuristic:** ~10+ substantiated ISSUE/TODO/SUGGESTION (grounded) → stop piling comments; summary + talk with author; reject for rework. NITPICK/QUESTION/THOUGHT do not count.
+| Repo | Checklists |
+|---|---|
+| **kinebot-standard** | `checklist-general.md`, layer maps, `frontend-extras.md` |
+| **kinebot-cosmos** | `checklist-general.md`, `checklist-python.md` |
+| **kinebot-lambda** | `CLAUDE.md` |
+| **kinebot-research** | Cosmos checklists via API; **research** bar below |
 
-## 7. Post the review
+Checklist first. **Look at every changed line.** Extra scrutiny on auth, money, migrations, concurrency, hot paths.
+
+**kinebot-research:** **ISSUE** only for clear bugs, wrong results, security, data loss; missing unit tests normal if PR QA runs; prefer **APPROVE**/**COMMENT** when the experiment clearly helps.
+
+**kinebot-cosmos:** apply checklists fully; missing tests/error paths on `app/` → **ISSUE**/**TODO**; template/ticket/QA weak → **REQUEST_CHANGES** before deep read; borderline defect → **REQUEST_CHANGES**.
+
+**kinebot-standard** / **kinebot-lambda:** default bar between research and cosmos unless `CLAUDE.md` says otherwise.
+
+Where checklists are silent: design, correctness, complexity, tests on new paths, naming, security, performance, docs, AI smells.
+
+**Rejection heuristic:** many grounded **ISSUE**s → **REQUEST_CHANGES** with top blockers inline; tell Sofia rework needed.
+
+## 8. Post the review
 
 English. Inline comments + atomic review:
 
@@ -130,25 +185,48 @@ gh api --method POST repos/{owner}/{repo}/pulls/<number>/reviews --input review.
 ```json
 {
   "event": "REQUEST_CHANGES | COMMENT | APPROVE",
-  "body": "<author-facing summary, ≤4 lines; see COMMENT-VOICE.md>",
+  "body": "",
   "comments": [
     { "path": "src/foo.ts", "line": 42, "side": "RIGHT", "body": "ISSUE: …" }
   ]
 }
 ```
 
-Draft **body** and **inline comments** for the author. Run `../../humanizer/PASS.md` on body and each inline before post (not on the chat report). Draft the **chat report** separately for Sofia (verdict counts, full QA, blocked environment).
+Humanize each inline via `../../humanizer/PASS.md` (`pr-review-inline`); skip empty `body`.
 
-Verdict:
+**Verdict:** any **ISSUE** → `REQUEST_CHANGES`; else **COMMENT** or **APPROVE** when the change improves the system.
 
-- Any **ISSUE** → `REQUEST_CHANGES` (on **kinebot-research**, reserve **ISSUE** for the blockers listed above; do not upgrade SUGGESTION-tier findings to force a reject)
-- Only SUGGESTION/TODO/NITPICK/QUESTION/THOUGHT → `COMMENT` or `APPROVE` if you trust the author (**kinebot-cosmos**: do not approve with open **TODO** on new `app/` behavior)
-- Clean improvement → `APPROVE`
+### `# Evidence` (before **APPROVE**)
 
-**kinebot-standard, two reviewers, Sofia is last approver:** QA evidence in a **separate** PR comment starting with `# Evidence`, before approve. GitHub summary body still author-facing, ≤4 lines (not a QA log).
+Required on **kinebot-standard** and **kinebot-cosmos**. Separate PR comment, not review `body`.
 
-**kinebot-cosmos, single reviewer:** no separate `# Evidence` comment unless a run result *is* a finding.
+Write `/tmp/evidence-<PR>.md` starting with `# Evidence`, then QA steps run (pass/fail, one line each) and deep-pass commands when §6 deep ran.
 
-## 8. Clean up and report
+Post with **`gh`**:
 
-Remove the worktree. **Chat only:** tell Sofia verdict, counts by label, PR URL, full QA (ran / blocked / why), and ISSUE file:lines. Do not mirror that packet in the GitHub review body.
+```
+gh pr comment <PR> --body-file /tmp/evidence-<PR>.md \
+  --attach '/tmp/pr-<PR>-evidence/step-3.png#What the frame must show' \
+  ...
+```
+
+Use `--attach` for each screenshot; alt text after `#` must state what the frame must show. Reference attachments in the markdown when helpful (`![label](./step-3.png)`). Up to 50 attachments per comment per `gh pr comment --help`.
+
+## 9. Clean up and report
+
+Run §1 cleanup before chat.
+
+**Chat to Sofia:** PR URL; one-line what changed; `depth` and stack-top `#`; verdict; label counts; **producer pass** (architecture, placement, cleanup, split, **which stack PR should change**); full QA; ISSUE file:lines; worktree confirmed gone.
+
+**Screenshots Sofia must capture** (when §5 could not): a numbered block, each item exactly:
+
+```
+**Shot <n> - <short name>**
+Commands: <copy-paste shell lines from repo root in worktree>
+Must show: <what is visible in the frame>
+For PR: #<number where fix or evidence applies, if not this PR>
+```
+
+No vague "grab UI evidence." If no shots needed, omit the block.
+
+Do not mirror the chat packet on GitHub review `body`.

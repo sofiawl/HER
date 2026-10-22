@@ -212,7 +212,7 @@ def step_rules(step):
         "## Rules",
         "- Follow HER rules: no code comments, no em dash, no en dash, no emojis.",
         "- Do not commit, push, open PRs or install anything unless your task says so.",
-        "- Never merge PRs or approve PRs on GitHub for Sofia (HER rule 10). Open PRs and stop; a teammate reviews and merges.",
+        "- Never merge PRs or approve PRs on GitHub for Sofia (HER rule 10). Open PRs as drafts (`gh pr create --draft`) and stop; Sofia marks them ready, a teammate reviews and merges.",
         "- You may edit files inside the paths of your task." if step["writes"] else "- Read only: do not edit any file.",
         "- Nobody answers you during this step. Do not guess a decision that belongs to Sofia.",
         "- End with a short report: what you did, files changed, checks run and their results,",

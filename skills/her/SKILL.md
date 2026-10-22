@@ -98,7 +98,7 @@ verdicts, PR links, open questions, missing skills. With a card, comment the
 summary on it (`kineloop_add_issue_comment`) after `../humanizer/PASS.md`
 channel `kineloop-comment`, and move it to review when PRs are open. Any card
 title, description, or document HER creates or edits on Kineloop: `kineloop-card`
-pass before post. Name **who should review** (never Sofia on her own PRs). Do not merge the stack (HER rule 10).
+pass before post. Name **who should review** (never Sofia on her own PRs). Open every PR as a draft (`gh pr create --draft`); Sofia marks it ready. Do not merge the stack (HER rule 10).
 
 ## Later
 
