@@ -12,7 +12,7 @@ Humanizer applies this on top of the channel file. It is **surface only**: wordi
 
 ## Hard rules (all channels)
 
-- No em dash, no en dash, no emoji (HER rule 3). PR template shortcodes are the only emoji exception on `pr-body`.
+- No em dash, no en dash, no emoji (HER rule 3). PR template emojis are the exception on `pr-body`: keep them, never strip them. Names (branches, PR titles, identifiers) are not text to rewrite.
 - Do not add, remove, or soften facts: counts, pass/fail, URLs, card IDs, file paths, placeholders, section headings required by a template.
 - Do not critique correctness, suggest fixes, or add "worth knowing" sections the draft did not have.
 - Never invent links, screenshots, ticket URLs, or QA results. Keep `[placeholder]` text byte-for-byte unless the channel allows fixing grammar inside the brackets.

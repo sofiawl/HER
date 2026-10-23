@@ -17,7 +17,7 @@ Optional: `Fixed in <short-sha>.` when the diff is not obvious from the thread l
 ## Voice
 
 - Plain, direct, no filler ("Thanks for", "Good catch", "As discussed").
-- No em dash, no en dash, no emoji (HER rule 3).
+- No em dash, no en dash, no emoji (HER rule 3). When editing a PR body, keep its template emojis.
 - No narrating process. No restating the whole comment.
 - Critique stays about the code; replies stay factual.
 

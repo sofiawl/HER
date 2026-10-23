@@ -210,7 +210,7 @@ def skill_path(skill):
 def step_rules(step):
     return [
         "## Rules",
-        "- Follow HER rules: no code comments, no em dash, no en dash, no emojis.",
+        "- Follow HER rules: no code comments, no em dash, no en dash, no emojis in prose. Keep PR template emojis; never rename branches or PRs to fit these rules.",
         "- Do not commit, push, open PRs or install anything unless your task says so.",
         "- Never merge PRs or approve PRs on GitHub for Sofia (HER rule 10). Open PRs as drafts (`gh pr create --draft`) and stop; Sofia marks them ready, a teammate reviews and merges.",
         "- You may edit files inside the paths of your task." if step["writes"] else "- Read only: do not edit any file.",
@@ -274,7 +274,7 @@ def review_brief(run, step):
         "1. Spec: read the diff (`git diff` and untracked files). Does it do exactly the task, nothing",
         "   missing and nothing extra? Do not trust the report, check the code.",
         "2. Quality: correctness, tests run and passing, HER rules (no code comments, no em dash,",
-        "   no en dash, no emojis), names, dead code.",
+        "   no en dash, no emojis in prose; PR template emojis stay), names, dead code.",
         "3. List each problem with file:line and the fix. Ignore style nits that no rule covers.",
         "",
         "The last line of your reply is exactly `APPROVE` or `CHANGES`.",

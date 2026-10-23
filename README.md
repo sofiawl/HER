@@ -213,7 +213,7 @@ Loaded from `rules/RULES.md` at SessionStart:
 
 1. Writing check on my last message (Sofia-specific).
 2. No comments in code you write.
-3. No em dash, en dash, or emoji (PR template shortcodes excepted).
+3. No em dash, en dash, or emoji in prose. Names (branches, PR titles, identifiers) are never checked; PR template emojis always stay.
 4. Do the work; explain the why briefly; deeper study → `/her:teach`.
 5. Nudge unused HER skills with `HER fit: /her:<name>`.
 6. Delegate to the right model tier / Cursor slug.

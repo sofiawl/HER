@@ -1,6 +1,6 @@
 # Sofia's PR template, and what goes in each part
 
-The skeleton is fixed. Keep the headings in this order. Emoji shortcodes in the type list are the one allowed emoji exception.
+The skeleton is fixed. Keep the headings in this order. The emoji shortcodes in the type list are part of the template: always keep them, never strip them when writing or editing a PR body.
 
 ```markdown
 # What type of PR is this? (check all applicable)

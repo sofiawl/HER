@@ -24,7 +24,7 @@ A PR is a short brief for a teammate reviewing from GitHub and a fresh clone. So
 
 ## Hard rules
 
-- No em dash, no en dash, no emojis in the text (the template's type shortcodes are the only exception).
+- No em dash, no en dash, no emojis in the text (the template's emojis are the exception: always keep them).
 - Every number, count or "passes" claim comes from a run in this session (`../judge/VERIFY.md`).
 - Never invent links, IDs, PR numbers or screenshots. Placeholder and tell Sofia. The GIF is always Sofia's pick, leave that section empty.
 - **Never name local-only paths in the PR body.** `.scratch/`, uncommitted specs, local QA records, private notes: out. If a doc is not on the branch the reviewer checks out, it is not a Related link.
