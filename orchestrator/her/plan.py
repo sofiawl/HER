@@ -7,10 +7,6 @@ from .repo import dirty_files, git_root, resolved
 from .config import TIERS
 from .skills import catalog, catalog_text
 
-BRANCH_PATTERN = re.compile(
-    r"(feat|fix|proposal|chore|refactor|docs|test)/([A-Z][A-Z0-9]*-[0-9]+|[a-z0-9]+)(_[A-Za-z0-9]+)+"
-)
-
 PER_REPO_SKILLS = ("judge", "to-pr")
 CARD_PATTERN = re.compile(r"[A-Z][A-Z0-9]*-[0-9]+")
 
@@ -146,9 +142,8 @@ def guide_text(config):
         "  unless the request explicitly asks for it.",
         "- `depends_on` lists step ids whose report this step needs. End code-changing pipelines",
         "  with a `judge` step. A `to-pr` step after a judge step is skipped unless the verdict is ship.",
-        "- A writing step whose cwd is a git repo must set `branch`, shaped",
-        "  `<type>/<CARD-or-word>_<words_with_underscores>` with type feat, fix, proposal, chore,",
-        "  refactor, docs or test (hyphen only inside a card ID, e.g. feat/ML-88_export_csv).",
+        "- A writing step whose cwd is a git repo must set `branch`. Name new branches per HER rule 9;",
+        "  an existing branch (e.g. an open PR) keeps its name. `her check` never validates names.",
         "  `her begin` checks it out, creating it from the repo `base` (default main) when missing.",
         "  The first writing step in a repo refuses a dirty tree.",
         "- `title` is a short label for the step.",
@@ -218,10 +213,6 @@ def validate(plan, config):
             problems.append(f"step {sid}: cwd {step.get('cwd')} does not exist")
         elif step.get("writes") and not step.get("branch") and git_root(cwd):
             problems.append(f"step {sid}: writes in a git repo, declare branch")
-        if step.get("branch") and not BRANCH_PATTERN.fullmatch(step["branch"]):
-            problems.append(
-                f"step {sid}: branch {step['branch']} must look like feat/ML-88_short_words or fix/word_more_words"
-            )
         if step.get("agent") != plan.get("host"):
             problems.append(f"step {sid}: agent {step.get('agent')} differs from host {plan.get('host')}")
         for dep in step.get("depends_on", []):

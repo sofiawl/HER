@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from her.config import DEFAULT_MODEL_NOTES, DEFAULT_MODELS, TIERS, Config
-from her.plan import BRANCH_PATTERN, guide_text, validate, warnings
+from her.plan import guide_text, validate, warnings
 from tests.helpers import git_repo, make_plan, make_step
 
 
@@ -97,14 +97,6 @@ class WarningTest(unittest.TestCase):
             self.assertEqual(len(warnings(plan, Config())), 1)
             plan["steps"].append(make_step("j", directory, skill="judge"))
             self.assertEqual(warnings(plan, Config()), [])
-
-
-class BranchPatternTest(unittest.TestCase):
-    def test_rule_examples(self):
-        for good in ("feat/ML-88_export_csv", "fix/login_redirect", "refactor/01_her_orchestrator", "feat/DES2-213_nAIosh"):
-            self.assertTrue(BRANCH_PATTERN.fullmatch(good), good)
-        for bad in ("feat/ML-88_short-words", "feature/ML-88_x", "feat/ML-88"):
-            self.assertFalse(BRANCH_PATTERN.fullmatch(bad), bad)
 
 
 if __name__ == "__main__":
