@@ -1,6 +1,6 @@
 ---
 name: debate
-description: Argue with Sofia to find the best decision. Use when she says debate this, argue with me, devil's advocate, convince me otherwise, should I use X or Y, help me decide, or when /her:grill-me hits a genuine trade-off. Adversarial but honest, ends in a decision record.
+description: Argue with Sofia to find the best decision. Use when she says debate this, argue with me, devil's advocate, convince me otherwise, should I use X or Y, help me decide, or when /her:grill-me hits a genuine trade-off. Adversarial but honest; ends with her final call.
 argument-hint: "[the decision, e.g. 'Postgres vs SQLite for the sync service']"
 ---
 
@@ -40,43 +40,7 @@ Professor mode: when one of these shows up, name it in one line and explain it b
 
 ## 5. Stop
 
-Stop when positions converge, when the remaining disagreement is pure preference, or when Sofia calls it. Ask for her final call; the decision is hers.
-
-## 6. Decision record
-
-Output:
-
-```
-# <NNNN> - <decision title>
-
-Date: <YYYY-MM-DD>
-Status: decided
-
-## Decision
-<one or two sentences>
-
-## Options considered
-- <option>: <one line>
-
-## Key arguments
-- For: <strongest points that survived>
-- Against: <strongest points that survived>
-
-## Why this one won
-<the deciding reasons>
-
-## What would change this decision
-<specific evidence or numbers that would flip it>
-
-## Revisit trigger
-<a concrete event or date, e.g. "if p95 latency exceeds 300 ms" or "at the Q1 review">
-```
-
-Then offer to save it:
-- inside a repo: `docs/decisions/NNNN-<slug>.md`, with NNNN one higher than the highest existing record (start at 0001),
-- otherwise: a note in `~/ObsidianPipa/+/`.
-
-If the decision needs a small diagram, add a Mermaid block in the decision record.
+Stop when positions converge, when the remaining disagreement is pure preference, or when Sofia calls it. Ask for her final call; the decision is hers. If she wants an ADR or decision note saved, she asks; do not auto-draft one.
 
 ## Subagents
 
@@ -86,4 +50,4 @@ Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 |---|---|---|
 | Check a factual claim either side relies on (code, docs, benchmark) | `sonnet` | Background, answer with path:line or URL |
 | Steelman an option Sofia leans against, when the decision is costly to reverse | `opus` | One agent per option, in parallel |
-| Arguing with Sofia and the decision record | main | Needs the conversation |
+| Arguing with Sofia | main | Needs the conversation |

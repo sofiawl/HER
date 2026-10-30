@@ -18,6 +18,7 @@ You don't need to remember every HER skill, ask this one instead.
 
 **learn** (professor)
 - `/her:teach`: explain in chat, her one understanding line, 1 to 3 checks, append to `Efforts/On/skill issue.md`.
+- `/her:master`: college or course project with a rubric-backed learning contract, teach gates, lazy builds, defense exam on the repo.
 
 **research** (professor)
 - `/her:research`: primary sources (default), optional last-30-days discourse, or throwaway spike (`sources` / `discourse` / `spike`).
@@ -28,7 +29,7 @@ You don't need to remember every HER skill, ask this one instead.
 **plan code** (professor)
 - `/her:grill-me`: user-only one-question-at-a-time interview (summary + debate handoff).
 - `/her:grilling`: model-fired round-based interview when a decision is unclear.
-- `/her:debate`: argues against Sofia to find the best decision, ends with a decision record.
+- `/her:debate`: argues against Sofia to find the best decision; ends with her final call.
 
 **produce code** (caveman)
 - `/her:lazy`: laziest senior dev, minimum code that works.
@@ -60,6 +61,7 @@ Infra without a skill, never suggest as a fit: pxpipe, fast-jev-compaction (inst
   (thin self-verify). Add `/her:judge` before write for risky or perf subs. Agent
   may auto-fire `/her:grilling` when a plan-code decision is missing.
 - **Learning**: `/her:teach` for one concept (appends to `Efforts/On/skill issue.md`).
+- **Course project (semester arc)**: `/her:master` for contract + milestones; `/her:lazy` only inside contract or logged escape.
 - **Unknowns**: `/her:research` (sources mode), or `discourse` / `spike` when that fits.
 - **Writing up research**: `/her:report` once experiments in a kinebot-research folder are done.
 - **Review someone else's PR**: `/her:pr-review <number>`.
