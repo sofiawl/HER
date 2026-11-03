@@ -140,7 +140,7 @@ Everything below is **Sofia-local or machine-local**. Another person on another 
 
 | Where | Hardcoded path | Purpose |
 |---|---|---|
-| `skills/teach/SKILL.md` | `/home/sofia/ObsidianPipa/Efforts/On/skill issue.md` | Where `/her:teach` appends |
+| `skills/teach/SKILL.md` | `/home/sofia/ObsidianPipa/Efforts/On/Teach.md` | Where `/her:teach` appends |
 | `skills/debate/SKILL.md` | `~/ObsidianPipa/+/` | Default decision records |
 | `skills/research/SKILL.md` | `~/ObsidianPipa/+/<Title>.md` | Obsidian fallback for research notes |
 | `skills/report/SKILL.md` | `~/kinebot-latex-templates/relatorios/` | Compiled report output |

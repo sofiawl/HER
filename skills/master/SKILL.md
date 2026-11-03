@@ -27,7 +27,7 @@ All paths relative to the **project repo root** she names on intake.
 | `LEARNING.md` | Approved contract + milestone checklist (commit unless she forbids) |
 | `.her/master/ledger.md` | Session log: gates, escapes, exam results (create `.her/master/` if missing) |
 
-Obsidian mirror (optional): after each passed gate, append the same block format as `/her:teach` to `/home/sofia/ObsidianPipa/Efforts/On/skill issue.md` only when she asks to mirror there.
+Obsidian mirror (optional): after each passed gate, append the same block format as `/her:teach` to `/home/sofia/ObsidianPipa/Efforts/On/Teach.md` only when she asks to mirror there.
 
 ## 1. Intake
 

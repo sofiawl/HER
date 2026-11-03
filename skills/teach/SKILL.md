@@ -1,6 +1,6 @@
 ---
 name: teach
-description: Teach Sofia one concept in chat, have her write one line of what she understood, ask 1 to 3 checks, then append the lesson to her skill-issue effort note. Use when she says "teach me X", "I want to learn X", "explain X properly", "quiz me on X", or accepts a /her:teach offer from another skill.
+description: Teach Sofia one concept in chat, have her write one line of what she understood, ask 1 to 3 checks, then append the lesson to Teach effort note. Use when she says "teach me X", "I want to learn X", "explain X properly", "quiz me on X", or accepts a /her:teach offer from another skill.
 argument-hint: "[topic]"
 disable-model-invocation: true
 ---
@@ -26,7 +26,7 @@ One topic per session. Explain it, she writes one understanding line, you ask 1 
 
 After the checks, append one block to:
 
-`/home/sofia/ObsidianPipa/Efforts/On/skill issue.md`
+`/home/sofia/ObsidianPipa/Efforts/On/Teach.md`
 
 Match the sample format already in that file. Do not create a separate note under `+/learn/` or elsewhere.
 
@@ -51,5 +51,5 @@ Model tiers: HER rule 6. Cursor slugs per chore: `../MODELS-CURSOR.md`.
 
 | Chore | Model | How |
 |---|---|---|
-| Append the formatted block to `skill issue.md` | `haiku` | After the checks, given the exact text to append |
+| Append the formatted block to `Teach.md` | `haiku` | After the checks, given the exact text to append |
 | Explaining and the checks | main | Needs the conversation |
