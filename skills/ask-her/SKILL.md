@@ -25,6 +25,7 @@ You don't need to remember every HER skill, ask this one instead.
 
 **report** (professor)
 - `/her:report`: Kinebot LaTeX report from a kinebot-research folder (ranks results, you approve, then writes and compiles).
+- `/her:recap`: weekly recap and pt-BR slide deck from Claude sessions, Cursor, git and Kineloop (plan, you approve, then builds and checks).
 
 **plan code** (professor)
 - `/her:grill-me`: user-only one-question-at-a-time interview (summary + debate handoff).
@@ -64,6 +65,7 @@ Infra without a skill, never suggest as a fit: pxpipe, fast-jev-compaction (inst
 - **Course project (semester arc)**: `/her:master` for contract + milestones; `/her:lazy` only inside contract or logged escape.
 - **Unknowns**: `/her:research` (sources mode), or `discourse` / `spike` when that fits.
 - **Writing up research**: `/her:report` once experiments in a kinebot-research folder are done.
+- **What did I do this week / weekly presentation**: `/her:recap`.
 - **Review someone else's PR**: `/her:pr-review <number>`.
 - **Answer feedback on her PR**: `/her:address-review <number>` (or current branch PR).
 - **Context overload**: `/her:handoff` for this thread; `/her:caveman` or `/her:adhd` for reply shape.

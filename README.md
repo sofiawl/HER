@@ -55,6 +55,7 @@ Under the orchestrator, `lazy`, `judge`, and `to-pr` can run **headless** (decis
 | research | `/her:research` | professor | **sources** (default): cited primary sources; **discourse**: last30days if installed; **spike**: throwaway code (`LOGIC.md` / `UI.md`) |
 | research | `/her:report` | professor | Kinebot LaTeX report from a kinebot-research folder |
 | plan code | `/her:grill-me` | professor | User-only one-question-at-a-time interview (summary + debate handoff) |
+| research | `/her:recap` | professor | Weekly recap from Claude sessions, Cursor, git and Kineloop, then a short pt-BR HTML deck (plan approved first) |
 | plan code | `/her:grilling` | professor | Model-fired rounds when a decision is unclear |
 | plan code | `/her:debate` | professor | Argues against me to find the best decision, ends with a decision record |
 | produce code | `/her:lazy` | caveman | Minimum code that works |
@@ -231,7 +232,7 @@ HER/
   orchestrator/                 # her CLI, cursor-agents/, tests
   skills/
     adhd/ ask-her/ caveman/ debate/ grill-me/ grilling/ handoff/ her/
-    address-review/ judge/ lazy/ memory/ pr-review/ report/ research/ teach/ to-pr/
+    address-review/ judge/ lazy/ memory/ pr-review/ recap/ report/ research/ teach/ to-pr/
   NOTICE.md
   README.md
 ```
