@@ -15,9 +15,11 @@ Follow `references/pr-review.md` end to end. Comment voice: `COMMENT-VOICE.md`. 
 
 **Audiences:** GitHub inline threads only (`event` for verdict). Chat = Sofia (recap, stack routing, producer pass, QA, screenshot command list, her follow-ups).
 
-**Next action first:** worktree → parse stack depth → CI + bot baseline → layer maps → QA → §6 or §7 pass → inlines → `# Evidence` via `gh` if approving → post review → force-remove worktree → chat report.
+**Next action first:** worktree → parse stack depth → CI + bot baseline → layer maps → QA → §6 or §7 pass → inlines → `# Evidence` via `gh` if approving → post review → sync GitHub state labels (cosmos/research/pdi only; §8) → force-remove worktree → chat report → **ML-186** sub-issue update.
 
-Do not commit, push, or open Kineloop issues unless Sofia asks outside this skill.
+After the chat report, update the matching sub-issue under [ML-186](https://loop.zslippy.com/issue/ML-186): find the row by PR URL or stack root, add a short comment in Brazilian Portuguese (verdict, review link, label changes, open blockers). If Kineloop tools are unavailable, say so in chat and paste the comment text for Sofia to post; do not skip silently.
+
+Do not commit or push unless Sofia asks outside this skill.
 
 **Not for Sofia's own PRs.** If the PR author is Sofia (or the branch is hers from a HER implementer run), do not use this skill as a substitute for a teammate review. Tell her to assign a reviewer; never `gh pr review --approve` or merge on her stack (HER rule 10).
 

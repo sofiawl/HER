@@ -176,6 +176,8 @@ Where checklists are silent: design, correctness, complexity, tests on new paths
 
 ## 8. Post the review
 
+Before posting, fetch existing inline threads on this PR (`gh api repos/{owner}/{repo}/pulls/<number>/comments`). If the same path and line already has an open **ISSUE** or **QUESTION** from Sofia and the code still has that defect, submit the review with **`comments: []`**: set `event` only, or one short review `body` pointing at the existing thread. Do not post the same finding again in new words after a rebase or re-review.
+
 English. Inline comments + atomic review:
 
 ```
@@ -212,6 +214,54 @@ gh pr comment <PR> --body-file /tmp/evidence-<PR>.md \
 
 Use `--attach` for each screenshot; alt text after `#` must state what the frame must show. Reference attachments in the markdown when helpful (`![label](./step-3.png)`). Up to 50 attachments per comment per `gh pr comment --help`.
 
+### Sync GitHub state labels
+
+After the review (and `# Evidence` when required) is posted. **GitHub only**, not Kineloop.
+
+**Repos:** **kinebot-cosmos**, **kinebot-research**, **kinebot-pdi** only. Same rules on all three. **Never** add or remove state labels on **kinebot-standard** (`pr-metadata.yml` owns them).
+
+**Scope:** state labels only. Never touch nature (`feature`, `proposal`, `fix`, `refactor`, `evidence-skipped`, …), process (`WIP`, `blocked`, `REJECT`, …), CI (`CONFLICTS`, `under-100-lines`, bot dependency labels), or PDI `type:*` / `area:*` / `priority:*`.
+
+Resolve names with `gh label list` before `gh pr edit`. Skip a logical label when that repo has no matching GitHub label (warn in chat).
+
+| Logical | cosmos / research | pdi |
+|---|---|---|
+| wait for review | `wait-review` | `status:wait-review` |
+| changes requested | `request-changes` | `changes-requested` |
+| approved | `approved` | `approved` |
+| wait to merge | `wait-to-merge` | `wait-to-merge` (if present) |
+
+**Inputs** (current head):
+
+```
+gh pr view <PR> --json labels,reviewRequests,headRefOid
+gh api repos/{owner}/{repo}/pulls/<number>/reviews
+```
+
+- **Head** = `headRefOid`. Only reviews whose `commit_id` equals head count.
+- **Requested humans** = `reviewRequests` logins, minus bots (ai-review and other automation accounts from that repo’s `docs/ai-pr-review/` or workflow). Sofia is the authenticated `gh` user.
+- **Other human** = a requested human who is not Sofia.
+- **Blocking inlines** = any **ISSUE:**, **TODO:**, or **QUESTION:** in **this** review submission (including on **`COMMENT`** when the event is not `REQUEST_CHANGES`).
+
+**Non-blocking pass** (`APPROVE`, or `COMMENT` with only **SUGGESTION**, **NITPICK**, **PRAISE**, **THOUGHT**, …): no label sync except the **APPROVE** row below.
+
+**APPROVE** (no blocking inlines):
+
+1. If any **other human** has `CHANGES_REQUESTED` on head: do **not** add `approved`; do **not** add `wait-to-merge`; apply **changes-requested removal** (below) only; keep **`wait-review`** until every **other requested human** has at least one review on head.
+2. Else add **`approved`**.
+3. If an **other human** already has **`APPROVE`** on head: add **`wait-to-merge`** when the label exists on the repo.
+4. **`wait-review`:** remove only when every **other requested human** has at least one review on head; if any other requested human has **no** review on head, **keep** **`wait-review`**.
+5. **Changes-requested removal:** remove the changes-requested label only when Sofia’s earlier `CHANGES_REQUESTED` on this PR is the sole reason it is still there and **no other human** has `CHANGES_REQUESTED` on head. If another reviewer added or owns **`request-changes` / `changes-requested`**, **never** remove it on Sofia’s **APPROVE**.
+
+**Blocking pass** (`REQUEST_CHANGES`, or `COMMENT` with blocking inlines):
+
+1. Add changes-requested if missing; if already present (including from another reviewer), leave it.
+2. Remove **`approved`** (including when the other reviewer had approved).
+3. Remove **`wait-to-merge`** if present.
+4. **`wait-review`:** remove only when Sofia is the **last** requested reviewer (**every other requested human** already has at least one review on head, and Sofia is about to finish the only remaining slot in `reviewRequests`). If any **other requested human** has **no** review on head, **keep** **`wait-review`**.
+
+Apply adds/removes with `gh pr edit <PR> --add-label … --remove-label …`. Record what changed for §9 chat and §10 ML-186.
+
 ## 9. Clean up and report
 
 Run §1 cleanup before chat.
@@ -230,3 +280,13 @@ For PR: #<number where fix or evidence applies, if not this PR>
 No vague "grab UI evidence." If no shots needed, omit the block.
 
 Do not mirror the chat packet on GitHub review `body`.
+
+## 10. Kineloop ML-186
+
+When Sofia is the reviewer (not the author), each completed pass must touch the tracker under https://loop.zslippy.com/issue/ML-186.
+
+1. Locate the sub-issue whose description lists this PR URL or this stack's root PR.
+2. Add a comment (pt-BR): one line per PR reviewed with GitHub verdict, link to the submitted review, GitHub state labels changed, and any ISSUE still open.
+3. If the sub-issue is missing, create or refresh it using the same rules as the "PR review requests -> Kineloop ML-186" routine (one issue per stack, merge order in the body).
+
+If Kineloop MCP is not authenticated, output the comment body in chat for Sofia and flag `ML-186 not updated`.
