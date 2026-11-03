@@ -47,15 +47,16 @@ Re-run after you edit `rules/RULES.md` or any skill. Writes `~/.cursor/rules/her
 
 Under the orchestrator, `lazy`, `judge`, and `to-pr` can run **headless** (decisions come from the run's `decisions.md`, not live quizzes).
 
-## Skills (17)
+## Skills (19)
 
 | Group | Skill | Mode | What it does |
 |---|---|---|---|
 | learn | `/her:teach` | professor | Explain in chat, one understanding line, 1 to 3 checks, append to my teach note |
+| learn | `/her:master` | professor | College or course project: learning contract from the rubric, teach gates, lazy builds, defense exam on the repo |
 | research | `/her:research` | professor | **sources** (default): cited primary sources; **discourse**: last30days if installed; **spike**: throwaway code (`LOGIC.md` / `UI.md`) |
 | research | `/her:report` | professor | Kinebot LaTeX report from a kinebot-research folder |
-| plan code | `/her:grill-me` | professor | User-only one-question-at-a-time interview (summary + debate handoff) |
 | research | `/her:recap` | professor | Weekly recap from Claude sessions, Cursor, git and Kineloop, then a short pt-BR HTML deck (plan approved first) |
+| plan code | `/her:grill-me` | professor | User-only one-question-at-a-time interview (summary + debate handoff) |
 | plan code | `/her:grilling` | professor | Model-fired rounds when a decision is unclear |
 | plan code | `/her:debate` | professor | Argues against me to find the best decision, ends with a decision record |
 | produce code | `/her:lazy` | caveman | Minimum code that works |
