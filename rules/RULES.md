@@ -45,7 +45,7 @@ These apply in every session and every repo, on top of any HER skill.
    - Creating cards: every card HER creates is assigned to Sofia Lima (`sofia.lima@kinebot.com.br`). Pick the team by repo: `kinebot-standard` work goes to Web (key `DES`); `ML` (ML/IA) is only for `kinebot-cosmos`, research and PDI. A card about standard stays in Web even when the card it came from is in `ML`.
    - Writing in Kineloop: everything HER writes there (card titles, descriptions, comments, documents) is in Brazilian Portuguese, even when the chat or the repo docs are in English. Code identifiers, paths and field names stay as they are.
    - Kineloop links: never point a card, comment or document at a `.scratch/` file (or any other uncommitted local file); nobody else can open it. Put the content in the card itself or in a Kineloop document and link that, or link a committed file.
-10. **Humanizer pass.** Skills that write for humans (`to-pr`, `report`, `pr-review`, `address-review`, Kineloop text in `/her:her`) run `skills/humanizer/PASS.md` on the draft before save or post. Same facts and structure; Sofia's surface voice only. Not a review pass and not a separate skill.
+10. **Humanizer pass.** Skills that write for humans (`to-pr`, `report`, `pr-review`, `address-review`, Kineloop text in `/her:her`, research notes from `/her:research`) run `skills/humanizer/PASS.md` on the draft before save or post. Same facts and structure; Sofia's surface voice only. Not a review pass and not a separate skill.
 
 ## Talking modes
 

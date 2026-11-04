@@ -49,6 +49,13 @@ which wins and why, or say unresolved.
 4. **What this means for you**: 2-4 sentences for Sofia's actual question.
 5. **Further reading**: optional.
 
+### Voice before save
+
+Draft for facts first. Then run `~/HER/skills/humanizer/PASS.md` on channel
+`research-note` (loads `RESEARCH-VOICE.md` + `CORE.md`). Same facts and
+citations; surface only. She should want to keep reading, not skim a filing
+cabinet. Do not invent claims to sound punchier.
+
 Save: `docs/research/<yyyy-mm-dd>-<slug>.md` in a repo, else
 `~/ObsidianPipa/+/<Title>.md` with `map: [[Research Map]]` and `tags: [research]`.
 

@@ -20,5 +20,6 @@ Load `CORE.md`, the channel row from `CHANNELS.md`, and that channel's voice fil
 | `/her:address-review` thread reply | `pr-thread-reply` |
 | `/her:her` Kineloop card or document | `kineloop-card` |
 | `/her:her` Kineloop comment (e.g. run summary) | `kineloop-comment` |
+| `/her:research` sources or discourse note | `research-note` |
 
 Other HER skills do not run this pass unless they post human-facing text; then pick the closest channel or ask Sofia once.

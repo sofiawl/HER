@@ -10,6 +10,7 @@ The **parent skill** picks the channel (see `PASS.md`). Do not expose channel na
 | `pr-thread-reply` | en | `../address-review/REPLY-VOICE.md` (one line; if draft is longer, compress to one line without losing facts) |
 | `pr-review-inline` | en | `../pr-review/COMMENT-VOICE.md` (labels and caps preserved) |
 | `report-prose` | pt-BR | `../report/STYLE.md` Voice section; keep LaTeX commands and `\label`s untouched |
+| `research-note` | en (or match draft) | `RESEARCH-VOICE.md` |
 | `freeform` | match draft | `CORE.md` only |
 
 After loading the channel file, always apply `CORE.md`.
