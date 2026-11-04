@@ -65,7 +65,7 @@ Group map:
 | produce code | lazy, to-pr, judge, address-review | caveman |
 | review | pr-review | adhd |
 | optimization | caveman | caveman |
-| unbloat | adhd, handoff, memory | adhd |
+| unbloat | adhd, memory | adhd |
 | orchestrate | her | adhd |
 | her | ask-her | adhd |
 

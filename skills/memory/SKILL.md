@@ -2,8 +2,8 @@
 name: memory
 description: >
   Install and wire akitaonrails/ai-memory for cross-harness project memory;
-  explain what goes in the wiki vs Kineloop, orchestrator, Obsidian, or
-  /her:handoff. Trigger on "/her:memory", "ai-memory", "project memory",
+  explain what goes in the wiki vs Kineloop, orchestrator, or Obsidian.
+  Trigger on "/her:memory", "ai-memory", "project memory",
   "wire memory hooks", "memory server", "where should this be remembered".
 argument-hint: "[install | status | wire | boundaries]"
 ---
@@ -11,9 +11,9 @@ argument-hint: "[install | status | wire | boundaries]"
 Mode: adhd
 
 ai-memory is HER **infra**, not a replacement for skills. It captures session
-work into a git-backed markdown wiki and delivers typed handoffs on the next
-SessionStart. `/her:handoff` stays for **this thread** under context pressure
-and for HER routing (next action + suggested `/her:` skills).
+work into a git-backed markdown wiki and can brief the next SessionStart.
+To continue a specific chat, paste that session's link into the new Claude
+or Cursor session.
 
 Read `BOUNDARIES.md` before writing anything into memory.
 
@@ -22,7 +22,7 @@ Read `BOUNDARIES.md` before writing anything into memory.
 | Situation | Use |
 |---|---|
 | Normal stop; next session same or different harness | Rely on ai-memory hooks (session end + SessionStart brief). Nothing to run. |
-| Context or rate limit nudge (~75% / ~85%) | `/her:handoff` now; publish to ai-memory if wired (see handoff skill). |
+| Need the exact other chat | Paste its session link into the new Claude or Cursor chat. |
 | Big decisions worth a durable page | Wiki page in ai-memory (or let consolidation run; optional manual page). |
 | Active orchestrator run | Point at `~/.her/runs/<id>/`; do not duplicate `plan.json`. |
 | Card / team / QA | Kineloop only. |
@@ -78,14 +78,13 @@ Project-scoped hooks only: run `install-hooks` with `--scope project --apply`
 from the repo root. Full detail:
 [docs/install.md](https://github.com/akitaonrails/ai-memory/blob/main/docs/install.md).
 
-HER plugin hooks (`hooks/hooks.json`) stay separate: they load `rules/RULES.md`
-and nudge `/her:handoff`. ai-memory hooks capture lifecycle; both can run.
+ai-memory hooks are lifecycle capture only. Cursor always-on HER rules come from
+`~/.cursor/rules/her.mdc` via `install-cursor-skills.sh`.
 
 ## status
 
 Run `ai-memory status` (or `docker` equivalent). Report: server up, data dir,
-which clients have MCP/hooks. If status fails, handoffs fall back to
-`/her:handoff` and repo artifacts only.
+which clients have MCP/hooks.
 
 ## wire
 
@@ -97,18 +96,6 @@ for Cursor skills; ai-memory is independent.
 
 Explain using `BOUNDARIES.md` in chat in three bullets max unless she asked
 for the full table.
-
-## Publish from `/her:handoff`
-
-When handoff runs and ai-memory is up, after the tmp file:
-
-1. Fill `HANDOFF-PAGE.md` from the handoff sections.
-2. Call MCP `memory_handoff_begin` with that body (owner-scoped; `shared=true`
-   only if Sofia asked for team visibility).
-3. Tell her the next SessionStart should claim it; she can also
-   `memory_handoff_list` / `memory_handoff_accept`.
-
-If MCP is not in this session, skip publish and say the tmp handoff path only.
 
 ## Subagents
 

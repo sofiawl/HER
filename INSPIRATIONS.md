@@ -19,14 +19,14 @@ Projects that shaped HER. Some we rewrote into skills. Some we looked at and lef
 | [prototype](https://github.com/mattpocock/skills/blob/main/skills/engineering/prototype/SKILL.md) | Throwaway prototype for one design question | Mode inside `/her:research` |
 | [research](https://github.com/mattpocock/skills/blob/main/skills/engineering/research/SKILL.md) | Cited primary-source research note | `/her:research` |
 | [grilling](https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md) | Relentless one-question interview | `/her:grilling` |
-| [handoff](https://github.com/mattpocock/skills/blob/main/skills/productivity/handoff/SKILL.md) | Compact the chat for the next agent | `/her:handoff` |
+| [handoff](https://github.com/mattpocock/skills/blob/main/skills/productivity/handoff/SKILL.md) | Compact the chat for the next agent | Dropped; paste session links instead |
 | [teach](https://github.com/mattpocock/skills/blob/main/skills/productivity/teach/SKILL.md) | Multi-session teaching workspace | `/her:teach` |
-| [mattpocock/skills](https://github.com/mattpocock/skills) | Parent of the Matt skills above | grill-me, grilling, handoff, teach, research, to-pr planning |
+| [mattpocock/skills](https://github.com/mattpocock/skills) | Parent of the Matt skills above | grill-me, grilling, teach, research, to-pr planning |
 | [akitaonrails/ai-memory](https://github.com/akitaonrails/ai-memory) | Cross-harness project wiki + hooks | `/her:memory` (binary not vendored) |
 | [typesafe-ai / Jev](https://docs.typesafe.ai/llms.txt) | System One typed judgments | Optional judgments; not a HER skill yet |
 | [tamaratran/fast-jev-compaction](https://github.com/tamaratran/fast-jev-compaction) | Compaction experiment | Keep disabled unless you accept the risks |
 
-Local wiki UI when ai-memory is running: [http://127.0.0.1:49374](http://127.0.0.1:49374). Older dated snapshots of HER itself live in [`LOG.md`](./LOG.md).
+Local wiki UI when ai-memory is running: [http://127.0.0.1:49374](http://127.0.0.1:49374). History of HER itself is git, not a separate log file.
 
 ## Credits
 

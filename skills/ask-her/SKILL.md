@@ -44,8 +44,7 @@ You don't need to remember every HER skill, ask this one instead.
 
 **unbloat** (adhd)
 - `/her:adhd`: next-action-first mode toggle.
-- `/her:handoff`: emergency compact of **this chat** (context/rate-limit nudge); HER next action + suggested skills.
-- `/her:memory`: install/wire ai-memory; project wiki vs handoff vs Kineloop vs orchestrator (`BOUNDARIES.md`).
+- `/her:memory`: install/wire ai-memory; project wiki vs Kineloop vs orchestrator (`BOUNDARIES.md`).
 
 **orchestrate** (adhd)
 - `/her:her`: `/her <what to do>` runs the HER orchestrator from this chat (grills you here, writes a plan, then runs each step as a fresh subagent with a reviewer, in this chat).
@@ -68,7 +67,7 @@ Infra without a skill, never suggest as a fit: pxpipe, fast-jev-compaction (inst
 - **What did I do this week / weekly presentation**: `/her:recap`.
 - **Review someone else's PR**: `/her:pr-review <number>`.
 - **Answer feedback on her PR**: `/her:address-review <number>` (or current branch PR).
-- **Context overload**: `/her:handoff` for this thread; `/her:caveman` or `/her:adhd` for reply shape.
+- **Context overload**: paste the other session link into a new chat; `/her:caveman` or `/her:adhd` for reply shape.
 - **Cross-session memory**: `/her:memory install` once; hooks capture project work.
 
 ## Router behavior

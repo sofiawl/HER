@@ -1,6 +1,6 @@
 # HER
 
-Sofia's personal kit for coding agents. Skills, always-on rules, an optional project wiki, and an orchestrator that does not care which model brand is on the other end. Tiers are `haiku`, `sonnet`, `opus`. Your harness maps those to whatever you actually have.
+Sofia's personal kit for coding agents. Skills, always-on rules, an optional project wiki, and an orchestrator that does not care which model brand is on the other end. Skills name a **tier** (`haiku`, `sonnet`, `opus`), not a vendor. Claude Code gets the tier name on Agent. Cursor gets a concrete `model` slug from that tier (`skills/MODELS-CURSOR.md` and rule 6): e.g. Haiku → `composer-2.5-fast` / `grok-4.7-high-fast`, Sonnet → `grok-4.7-high-fast` / `claude-sonnet-5-5-high`, Opus → `claude-opus-5-5-medium`.
 
 Claude Code installs it as the plugin `her@her` (`/her:<name>`). Cursor gets the same files through one install script (`her-<name>`). The portable core is this repo.
 
@@ -12,12 +12,10 @@ This tree is opinionated and local: my name, Obsidian paths, Kinebot reports, Ki
 |---|---|---|
 | Skills | `skills/<name>/SKILL.md` | The workflows |
 | Rules | `rules/RULES.md` | Always on (writing check, no code comments, modes, subagents, commits, Kineloop) |
-| Hooks | `hooks/` | Claude Code SessionStart + handoff nudge |
 | Memory | `skills/memory/` + [ai-memory](https://github.com/akitaonrails/ai-memory) | Cross-harness wiki (`/her:memory`) |
 | Orchestrator | `orchestrator/` | `her` CLI; plans set `host` to `claude` or `cursor` |
 | Humanizer | `skills/humanizer/` | Voice pass inside writing skills, not a skill you invoke |
 | Inspirations | `INSPIRATIONS.md` | Upstream projects + MIT credit |
-| Snapshots | `LOG.md` | Dated "how HER looked" notes |
 
 Modes per skill: **professor**, **caveman**, **adhd**. Session toggles: `/her:caveman`, `/her:adhd` (say `normal mode` to clear).
 
@@ -40,7 +38,6 @@ Modes per skill: **professor**, **caveman**, **adhd**. Session toggles: `/her:ca
 | review | `/her:pr-review` | adhd | Review someone else's GitHub PR (not mine) |
 | optimize | `/her:caveman` | caveman | Terse mode on |
 | unbloat | `/her:adhd` | adhd | Next-action-first mode on |
-| unbloat | `/her:handoff` | adhd | Compact this chat; optional publish to ai-memory |
 | unbloat | `/her:memory` | adhd | Install and wire ai-memory |
 | orchestrate | `/her:her` | adhd | Multi-step pipeline in this chat (`/her <request>`) |
 | route | `/her:ask-her` | adhd | Which skill fits right now |
@@ -54,7 +51,7 @@ Lost? `/her:ask-her`.
 - Learn something I want to keep: `/her:teach`.
 - Research: `/her:research`; write-up: `/her:report`.
 - Their PR: `/her:pr-review`. My PR feedback: `/her:address-review`.
-- Context dying: `/her:handoff`. Cross-session project memory: `/her:memory install` once.
+- Cross-session project memory: `/her:memory install` once. To resume another chat, paste its link into the new session.
 
 ## Install (this machine)
 
