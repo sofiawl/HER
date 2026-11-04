@@ -4,7 +4,7 @@ description: >
   Triage open GitHub PR review threads on Sofia's branch: fix or dismiss each
   item, reply in one line, one conventional commit per fix, push. GitHub only.
   Triggers: "/her:address-review", "address review comments", "fix PR feedback",
-  "respond to PR review", "answer review comments".
+  "respond to PR review", "answer review comments", "re-pr-address".
 argument-hint: "[PR number or URL]"
 ---
 
@@ -16,7 +16,7 @@ Follow `references/address-review.md` end to end. Thread replies: `REPLY-VOICE.m
 
 **Author side only.** Use on PRs Sofia (or HER on her branch) opened. Not for reviewing someone else's PR (`/her:pr-review`).
 
-Do not merge, approve, or request review on her behalf (HER rule 10). Do not open Kineloop issues unless she asks outside this skill.
+Do not merge or approve (HER rule 10). **Re-pr-address** (§9 in `references/address-review.md`): labels + `gh pr edit --add-reviewer` only when Sofia asks; never a top-level “please re-review” comment. Do not open Kineloop issues unless she asks outside this skill.
 
 ## Subagents
 

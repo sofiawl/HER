@@ -103,3 +103,14 @@ Next: <assign reviewer / wait CI / nothing>
 ```
 
 No paste of full diffs.
+
+## 9. Re-review pass (`re-pr-address`)
+
+When Sofia asks to send PRs back to a reviewer after feedback is handled (stack or list, often **changes requested** only):
+
+1. Limit to PRs that still need that reviewer (`reviewDecision` **CHANGES_REQUESTED** unless she names others).
+2. **Labels only:** drop the repo’s “changes requested” label (`changes-requested`, `request-changes`, …) and set the repo’s “waiting on review” label (`status:wait-review`, `wait-review`, …). Use `gh label list` when unsure.
+3. **Reviewers only:** `gh pr edit <PR> --add-reviewer <login>` (repeat per reviewer she names). Do not merge or approve.
+4. **Do not** post a top-level PR comment, @-mention, or “please re-review” note. GitHub’s review request is the ping; thread replies from §6 stay on inline threads only.
+
+Report in chat which PRs got label + reviewer updates. No `gh pr comment` in this pass.
